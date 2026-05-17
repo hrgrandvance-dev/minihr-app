@@ -328,24 +328,21 @@ let idCardBase64 = null;
 
 (async function init() {
   try {
-    alert('init started, LIFF_ID=' + LIFF_ID);
     await liff.init({ liffId: LIFF_ID, withLoginOnExternalBrowser: true });
-    alert('init done, isLoggedIn=' + liff.isLoggedIn());
 
     if (!liff.isLoggedIn()) {
       liff.login();
       return;
     }
 
-    userId = 'Uf09967b2e70079b498404b1bac12daea';
-    alert('step1: userId=' + userId);
-    document.getElementById('displayName').value = 'มายาวีร์ พรลิขิตบุญรัตน์';
+    const profile = await liff.getProfile();
+    userId = profile.userId;
+    document.getElementById('displayName').value = profile.displayName || '';
     document.getElementById('status').className = '';
     checkCanSubmit();
-    alert('canSubmit = ' + !document.getElementById('btnSubmit').disabled);
 
   } catch (err) {
-    alert('ERROR: ' + err.message);
+    showStatus('❌ LIFF ERROR: ' + err.message, 'error');
   }
 })();
 
