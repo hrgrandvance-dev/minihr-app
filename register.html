@@ -258,17 +258,28 @@
 
 <!-- ===== SELFIE ===== -->
 <div class="photo-box">
-  <label>📸 ภาพใบหน้า (selfie) *</label>
-  <button class="btn" id="btnSelfie">ถ่ายรูป</button>
-  <input type="file" id="fileSelfie" accept="image/*" capture="user" style="display:none">
+  <div class="photo-label">
+    📸 ภาพใบหน้า (selfie) *
+    <div class="label-en">Selfie Photo (required)</div>
+  </div>
+  <button type="button" class="btn-photo" onclick="openSheet('selfie')">
+    <span>📷 ถ่ายรูป / เลือกจากคลัง</span>
+    <span class="btn-en">Take Photo or Choose from Gallery</span>
+  </button>
   <img id="previewSelfie" class="preview" alt="">
   <div id="statusSelfie" class="photo-status missing">⚠️ ยังไม่ได้ถ่ายรูป</div>
 </div>
 
 <!-- ===== ID CARD ===== -->
- <label>🆔 บัตรประชาชน *</label>
-  <button class="btn" id="btnIdCard">ถ่ายรูป</button>
-  <input type="file" id="fileIdCard" accept="image/*" capture="environment" style="display:none">
+<div class="photo-box">
+  <div class="photo-label">
+    🆔 บัตรประชาชน *
+    <div class="label-en">ID Card (required)</div>
+  </div>
+  <button type="button" class="btn-photo" onclick="openSheet('idcard')">
+    <span>🆔 ถ่ายรูป / เลือกจากคลัง</span>
+    <span class="btn-en">Take Photo or Choose from Gallery</span>
+  </button>
   <img id="previewIdCard" class="preview" alt="">
   <div id="statusIdCard" class="photo-status missing">⚠️ ยังไม่ได้ถ่ายรูป</div>
 </div>
