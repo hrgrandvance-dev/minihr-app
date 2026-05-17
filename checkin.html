@@ -81,6 +81,14 @@
     text-align: center;
   }
 
+  /*
+    วิธีที่ work ใน LIFF:
+    - button#btnCamera เป็นปุ่มที่ user เห็นและแตะ
+    - input#fileInput ซ่อนด้วย position absolute + size 0 + opacity 0
+      (ห้ามใช้ display:none หรือ visibility:hidden เพราะทำให้ .click() ไม่ทำงาน)
+    - touchend handler เรียก fileInput.click() ใน same-tick ของ touch event
+      = LIFF/iOS WebView นับว่าเป็น direct user gesture ไม่บล็อก file picker
+    - capture="environment" บังคับกล้องเท่านั้น ไม่มี gallery option
   */
   #btnCamera {
     display: block;
@@ -194,8 +202,15 @@
 </div>
 
 <div class="camera-section">
-  <button class="btn-camera" id="btnCamera">📸 ถ่ายรูปสด</button>
-  <input type="file" id="fileInput" accept="image/*" capture="user" style="display:none">
+  <button type="button" id="btnCamera">📸 ถ่ายรูปสด (กล้องเท่านั้น)</button>
+
+  <!-- ซ่อน input จริงๆ — ถูก trigger โดย touchend ของ btnCamera -->
+  <input
+    type="file"
+    id="fileInput"
+    accept="image/jpeg,image/png"
+    capture="environment"
+  >
   <img id="preview" class="preview" alt="preview">
 </div>
 
