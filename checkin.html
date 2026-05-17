@@ -271,9 +271,8 @@
 <div id="status"></div>
 
 <script>
-  var LIFF_ID = '<?= LIFF_ID ?>';
-  var APPS_SCRIPT_URL = '<?= SCRIPT_URL ?>';
-
+  var LIFF_ID = '2010077723-35YjoRoE';
+  var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx53LoxeOYsLL_bAx5ZT-iF49jDcbcbDEJyq9GpZIRYcCwCQFAeihsuCUUcq_ez9ME/exec';
   let currentSlot = 'IN';
   let gpsCoords = null;
   let gpsError = null;
@@ -306,7 +305,7 @@
 
   (async function init() {
     try {
-      if (!LIFF_ID || LIFF_ID === '' || LIFF_ID.indexOf('<?=') !== -1) {
+      if (!LIFF_ID || LIFF_ID === '') {
         showStatus('❌ ยังไม่ได้ตั้งค่า LIFF_ID ใน Code.gs', 'error');
         return;
       }
