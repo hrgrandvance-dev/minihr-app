@@ -98,10 +98,16 @@
   }
 
   /*
-    ใช้ <button> ธรรมดา + JS .click() บน input ที่ซ่อนอยู่
-    วิธีนี้ทำงานได้ใน LINE LIFF WebView ทุกเวอร์ชัน
-    ไม่ใช้ <label> ครอบ <input> เพราะ LIFF บางเวอร์ชันบล็อก event chain
+    [REAL FIX] ใช้ input ลอยทับปุ่มเต็มพื้นที่ด้วย opacity:0
+    ผู้ใช้แตะที่ input โดยตรง ไม่มีการ relay ผ่าน JS เลย
+    LIFF จึงถือว่าเป็น direct user gesture และไม่บล็อก
+    ห้ามใส่ pointer-events:none เด็ดขาด
   */
+  .btn-photo-wrap {
+    position: relative;
+    width: 100%;
+  }
+
   .btn-photo {
     background: #06C755;
     color: #fff;
@@ -116,6 +122,7 @@
     flex-direction: column;
     align-items: center;
     gap: 2px;
+    pointer-events: none; /* ปุ่มรับ pointer ไม่ได้ เพราะ input ลอยทับอยู่ */
   }
 
   .btn-photo:active {
@@ -128,14 +135,15 @@
     font-weight: 400;
   }
 
-  /* input file ซ่อนจากมองเห็น แต่ยังอยู่ใน DOM ปกติ (ไม่ใช้ display:none) */
-  .hidden-file-input {
+  /* input ลอยทับเต็ม wrapper — user แตะที่นี่โดยตรง */
+  .overlay-file-input {
     position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
+    inset: 0;
+    width: 100%;
+    height: 100%;
     opacity: 0;
-    pointer-events: none;
+    cursor: pointer;
+    font-size: 0; /* ซ่อน text เผื่อ browser แสดง */
   }
 
   .photo-box .preview {
@@ -303,20 +311,22 @@
   </div>
 
   <!--
-    [FIX] ใช้ <button> + input.click() ผ่าน JS แทนการใช้ <label> ครอบ <input>
-    เพราะ LINE LIFF WebView บางเวอร์ชันไม่ส่ง click event ผ่าน label→input chain
-    accept="image/*" = เปิดทั้งกล้องและแกลเลอรี ให้ผู้ใช้เลือกเอง
+    [REAL FIX] input ลอยทับปุ่มเต็มพื้นที่ opacity:0 ไม่มี pointer-events:none
+    user แตะที่ input โดยตรง = LIFF ถือว่าเป็น direct gesture ไม่บล็อก
+    accept="image/*" ไม่มี capture = เปิดทั้งกล้องและแกลเลอรี
   -->
-  <input
-    type="file"
-    id="fileSelfie"
-    accept="image/*"
-    class="hidden-file-input"
-  >
-  <button type="button" class="btn-photo" onclick="document.getElementById('fileSelfie').click()">
-    <span>📷 ถ่ายรูป / เลือกจากคลัง</span>
-    <span class="btn-en">Take Photo or Choose from Gallery</span>
-  </button>
+  <div class="btn-photo-wrap">
+    <button type="button" class="btn-photo">
+      <span>📷 ถ่ายรูป / เลือกจากคลัง</span>
+      <span class="btn-en">Take Photo or Choose from Gallery</span>
+    </button>
+    <input
+      type="file"
+      id="fileSelfie"
+      accept="image/*"
+      class="overlay-file-input"
+    >
+  </div>
 
   <img id="previewSelfie" class="preview" alt="">
   <div id="statusSelfie" class="photo-status missing">⚠️ ยังไม่ได้ถ่ายรูป</div>
@@ -330,19 +340,21 @@
   </div>
 
   <!--
-    [FIX] เหมือนกัน — ใช้ <button> + input.click()
-    accept="image/*" = เปิดทั้งกล้องและแกลเลอรี
+    [REAL FIX] เหมือนกัน — input ลอยทับปุ่ม
+    accept="image/*" ไม่มี capture = เปิดทั้งกล้องและแกลเลอรี
   -->
-  <input
-    type="file"
-    id="fileIdCard"
-    accept="image/*"
-    class="hidden-file-input"
-  >
-  <button type="button" class="btn-photo" onclick="document.getElementById('fileIdCard').click()">
-    <span>🆔 ถ่ายรูป / เลือกจากคลัง</span>
-    <span class="btn-en">Take Photo or Choose from Gallery</span>
-  </button>
+  <div class="btn-photo-wrap">
+    <button type="button" class="btn-photo">
+      <span>🆔 ถ่ายรูป / เลือกจากคลัง</span>
+      <span class="btn-en">Take Photo or Choose from Gallery</span>
+    </button>
+    <input
+      type="file"
+      id="fileIdCard"
+      accept="image/*"
+      class="overlay-file-input"
+    >
+  </div>
 
   <img id="previewIdCard" class="preview" alt="">
   <div id="statusIdCard" class="photo-status missing">⚠️ ยังไม่ได้ถ่ายรูป</div>
