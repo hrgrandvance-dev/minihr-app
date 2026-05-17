@@ -322,10 +322,6 @@ let userId = null;
 let selfieBase64 = null;
 let idCardBase64 = null;
 
-/* =========================
-   INIT LIFF
-========================= */
-
 (async function init() {
   try {
     await liff.init({ liffId: LIFF_ID, withLoginOnExternalBrowser: true });
@@ -337,18 +333,12 @@ let idCardBase64 = null;
 
     const profile = await liff.getProfile();
     userId = profile.userId;
-    document.getElementById('displayName').value = profile.displayName || '';
-    document.getElementById('status').className = '';
     checkCanSubmit();
 
   } catch (err) {
     showStatus('❌ LIFF ERROR: ' + err.message, 'error');
   }
 })();
-
-/* =========================
-   PHOTO BUTTONS
-========================= */
 
 document.getElementById('btnSelfie').onclick = function(e) {
   e.preventDefault();
@@ -360,10 +350,6 @@ document.getElementById('btnIdCard').onclick = function(e) {
   document.getElementById('fileIdCard').click();
 };
 
-/* =========================
-   SELFIE
-========================= */
-
 document.getElementById('fileSelfie').onchange = async function(e) {
   if (!e.target.files || e.target.files.length === 0) return;
   try {
@@ -374,14 +360,9 @@ document.getElementById('fileSelfie').onchange = async function(e) {
     document.getElementById('statusSelfie').className = 'photo-status ok';
     checkCanSubmit();
   } catch(err) {
-    console.error(err);
     showStatus('❌ ไม่สามารถอ่านรูป selfie ได้', 'error');
   }
 };
-
-/* =========================
-   ID CARD
-========================= */
 
 document.getElementById('fileIdCard').onchange = async function(e) {
   if (!e.target.files || e.target.files.length === 0) return;
@@ -393,14 +374,9 @@ document.getElementById('fileIdCard').onchange = async function(e) {
     document.getElementById('statusIdCard').className = 'photo-status ok';
     checkCanSubmit();
   } catch(err) {
-    console.error(err);
     showStatus('❌ ไม่สามารถอ่านรูปบัตรประชาชนได้', 'error');
   }
 };
-
-/* =========================
-   RESIZE IMAGE
-========================= */
 
 async function resizeAndEncode(file) {
   const img = await new Promise(function(resolve, reject) {
@@ -414,7 +390,6 @@ async function resizeAndEncode(file) {
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
-
   const canvas = document.createElement('canvas');
   const maxW = 800;
   const scale = img.width > maxW ? maxW / img.width : 1;
@@ -424,63 +399,31 @@ async function resizeAndEncode(file) {
   return canvas.toDataURL('image/jpeg', 0.65).split(',')[1];
 }
 
-/* =========================
-   VALIDATION
-   ✅ แก้ไข: แสดงสาเหตุที่ปุ่มยังกดไม่ได้
-========================= */
-
 function checkCanSubmit() {
-  const req = [
-    'displayName', 'phone', 'bankName', 'bankAccountNo', 'bankAccountName'
-  ];
-
+  const req = ['displayName', 'phone', 'bankName', 'bankAccountNo', 'bankAccountName'];
   const allFilled = req.every(function(id) {
     return document.getElementById(id).value.trim();
   });
-
   const canSubmit = allFilled && !!userId && !!selfieBase64 && !!idCardBase64;
   document.getElementById('btnSubmit').disabled = !canSubmit;
-
-  if (!canSubmit) {
-    let reason = '';
-    if (!userId)            reason = '⏳ รอ LINE User ID... (ถ้าค้างนานกรุณาปิดแล้วเปิดใหม่จาก LINE)';
-    else if (!allFilled)    reason = '⚠️ กรุณากรอกข้อมูลให้ครบทุกช่องที่มี *';
-    else if (!selfieBase64) reason = '⚠️ กรุณาถ่ายรูปหน้าก่อน';
-    else if (!idCardBase64) reason = '⚠️ กรุณาถ่ายรูปบัตรประชาชนก่อน';
-
-    // ✅ แสดงเฉพาะเมื่อ userId พร้อมแล้วเท่านั้น
-    if (userId) showStatus(reason, 'error');
-  } else {
-    document.getElementById('status').className = '';
-  }
 }
-
-/* =========================
-   INPUT EVENTS
-========================= */
 
 document.querySelectorAll('input,select').forEach(function(el) {
   el.addEventListener('input',  checkCanSubmit);
   el.addEventListener('change', checkCanSubmit);
 });
 
-/* =========================
-   SUBMIT
-========================= */
-
 document.getElementById('btnSubmit').onclick = async function() {
-
   if (!userId) {
     showStatus('❌ LINE User ไม่พร้อม กรุณาเปิดใหม่จาก LINE', 'error');
     return;
   }
-
   if (!selfieBase64 || !idCardBase64) {
     showStatus('❌ กรุณาถ่ายรูปให้ครบทั้ง 2 รูป', 'error');
     return;
   }
 
-  showStatus('กำลังส่ง...', 'loading');
+  showStatus('⏳ กำลังส่งข้อมูล อาจใช้เวลา 30-60 วินาที...', 'loading');
   document.getElementById('btnSubmit').disabled = true;
 
   const payload = {
@@ -498,8 +441,6 @@ document.getElementById('btnSubmit').onclick = async function() {
     idCardBase64:    idCardBase64
   };
 
-  console.log('SUBMIT PAYLOAD keys:', Object.keys(payload));
-
   try {
     const res = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
@@ -508,7 +449,6 @@ document.getElementById('btnSubmit').onclick = async function() {
     });
 
     const json = await res.json();
-    console.log('RESPONSE', json);
 
     if (json.ok) {
       showStatus('✅ ลงทะเบียนเรียบร้อย รหัส: ' + json.employeeId, 'success');
@@ -521,15 +461,10 @@ document.getElementById('btnSubmit').onclick = async function() {
     }
 
   } catch(err) {
-    console.error(err);
     showStatus('❌ ' + (err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ'), 'error');
     document.getElementById('btnSubmit').disabled = false;
   }
 };
-
-/* =========================
-   STATUS
-========================= */
 
 function showStatus(text, level) {
   const el = document.getElementById('status');
