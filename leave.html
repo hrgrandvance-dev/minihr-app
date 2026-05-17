@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>ส่งใบลา — Mini HR App</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans Thai', system-ui, sans-serif; background: #FFF8F0; padding: 16px; }
+  .header {
+    background: linear-gradient(135deg, #06A65A, #06C755); color: #fff;
+    padding: 20px; border-radius: 16px; margin-bottom: 16px;
+  }
+  .header h1 { font-size: 22px; }
+  .header-en { font-size: 11px; opacity: 0.75; margin-top: 4px; }
+
+  .label-en { font-size: 10px; color: #AAA; opacity: 0.8; margin-top: 2px; }
+
+  .quota-box {
+    background: #fff; padding: 16px; border-radius: 12px; margin-bottom: 12px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; text-align: center;
+  }
+  .quota .num { font-size: 28px; font-weight: 800; color: #1A1A1A; }
+  .quota .lab { font-size: 12px; color: #777; }
+  .quota .lab-en { font-size: 10px; color: #AAA; opacity: 0.8; margin-top: 2px; }
+  .quota .max { font-size: 11px; color: #999; }
+
+  .field {
+    background: #fff; padding: 14px; border-radius: 10px; margin-bottom: 10px;
+  }
+  .field label { font-size: 12px; color: #777; display: block; margin-bottom: 6px; }
+  .types { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .type-btn {
+    background: #fff; border: 2px solid #E0D0C0; padding: 14px;
+    border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  .type-btn.active { background: #D4550A; color: #fff; border-color: #D4550A; }
+  .field input, .field textarea, .field select {
+    width: 100%; border: 1px solid #DDD; padding: 10px; border-radius: 6px; font-family: inherit; font-size: 14px;
+  }
+  .btn-submit {
+    background: #D4550A; color: #fff; border: none; padding: 16px;
+    border-radius: 12px; font-size: 17px; font-weight: 700; width: 100%; margin-top: 8px;
+  }
+  .btn-submit:disabled { background: #AAA; }
+  #status { margin-top: 12px; padding: 12px; border-radius: 8px; text-align: center; display: none; }
+  #status.show { display: block; }
+  #status.success { background: #1F7A1F; color: #fff; }
+  #status.error { background: #B23A3A; color: #fff; }
+  #status.loading { background: #F2A640; color: #fff; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>📝 ส่งใบลา</h1>
+  <p>กรอกฟอร์มเพื่อขออนุมัติ<div class="header-en">Submit Leave Request</div></p>
+</div>
+
+<div class="field">
+  <label>สิทธิ์ลาคงเหลือ<div class="label-en">Remaining Leave Quota</div></label>
+  <div class="quota-box">
+    <div class="quota">
+      <div class="num" id="qSick">-</div>
+      <div class="lab">ลาป่วย<div class="lab-en">Sick Leave</div></div>
+      <div class="max">จาก <span id="qSickMax">30</span></div>
+    </div>
+    <div class="quota">
+      <div class="num" id="qPersonal">-</div>
+      <div class="lab">ลากิจ<div class="lab-en">Personal Leave</div></div>
+      <div class="max">จาก <span id="qPersonalMax">3</span></div>
+    </div>
+    <div class="quota">
+      <div class="num" id="qVacation">-</div>
+      <div class="lab">พักร้อน<div class="lab-en">Vacation</div></div>
+      <div class="max">จาก <span id="qVacationMax">15</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="field">
+  <label>ประเภทการลา *<div class="label-en">Leave Type</div></label>
+  <div class="types">
+    <button class="type-btn" data-type="sick">ลาป่วย</button>
+    <button class="type-btn" data-type="personal">ลากิจ</button>
+    <button class="type-btn" data-type="vacation">พักร้อน</button>
+    <button class="type-btn" data-type="unpaid">ไม่รับเงิน</button>
+  </div>
+</div>
+
+<div class="field">
+  <label>ระยะเวลา *<div class="label-en">Duration</div></label>
+  <div class="types">
+    <button class="type-btn" data-dur="full_day">เต็มวัน</button>
+    <button class="type-btn" data-dur="half_day_morning">ครึ่งเช้า</button>
+    <button class="type-btn" data-dur="half_day_afternoon">ครึ่งบ่าย</button>
+    <button class="type-btn" data-dur="hourly">รายชั่วโมง</button>
+  </div>
+</div>
+
+<div class="field"><label>วันที่เริ่มลา *<div class="label-en">Start Date</div></label><input type="date" id="startDate"></div>
+<div class="field"><label>วันที่สิ้นสุด<div class="label-en">End Date</div></label><input type="date" id="endDate"></div>
+<div class="field" id="hoursField" style="display:none;"><label>จำนวนชั่วโมง<div class="label-en">Hours</div></label><input type="number" id="totalHours" min="0.5" step="0.5"></div>
+
+<div class="field"><label>เหตุผล *<div class="label-en">Reason</div></label><textarea id="reason" rows="3" placeholder="ระบุเหตุผลโดยย่อ"></textarea></div>
+
+<button class="btn-submit" id="btnSubmit" disabled><span class="btn-text">ส่งใบลา</span><span class="btn-en">Submit Leave</span></button>
+<div id="status"></div>
+
+<script>
+const LIFF_ID = '<?= LIFF_ID ?>';
+const APPS_SCRIPT_URL = '<?= SCRIPT_URL ?>';
+  let userId = null;
+  let leaveType = null;
+  let durationType = null;
+
+  (async function init() {
+    await liff.init({ liffId: LIFF_ID, withLoginOnExternalBrowser: true });
+    if (!liff.isLoggedIn()) liff.login();
+    const profile = await liff.getProfile();
+    userId = profile.userId;
+    loadQuota();
+  })();
+
+  async function loadQuota() {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'balance', lineUserId: userId })
+    });
+    const json = await res.json();
+    if (json.ok) {
+      document.getElementById('qSick').textContent = json.leaveBalance.sick.remaining;
+      document.getElementById('qSickMax').textContent = json.leaveBalance.sick.quota;
+      document.getElementById('qPersonal').textContent = json.leaveBalance.personal.remaining;
+      document.getElementById('qPersonalMax').textContent = json.leaveBalance.personal.quota;
+      document.getElementById('qVacation').textContent = json.leaveBalance.vacation.remaining;
+      document.getElementById('qVacationMax').textContent = json.leaveBalance.vacation.quota;
+    }
+  }
+
+  document.querySelectorAll('.type-btn[data-type]').forEach(function(b) {
+    b.onclick = function() {
+      document.querySelectorAll('.type-btn[data-type]').forEach(function(x) { x.classList.remove('active'); });
+      b.classList.add('active'); leaveType = b.dataset.type; checkCan();
+    };
+  });
+  document.querySelectorAll('.type-btn[data-dur]').forEach(function(b) {
+    b.onclick = function() {
+      document.querySelectorAll('.type-btn[data-dur]').forEach(function(x) { x.classList.remove('active'); });
+      b.classList.add('active'); durationType = b.dataset.dur;
+      document.getElementById('hoursField').style.display = durationType === 'hourly' ? 'block' : 'none';
+      checkCan();
+    };
+  });
+  document.querySelectorAll('input,textarea').forEach(function(el) { el.oninput = checkCan; });
+
+  function checkCan() {
+    const startDate = document.getElementById('startDate').value;
+    const reason = document.getElementById('reason').value.trim();
+    document.getElementById('btnSubmit').disabled =
+      !(leaveType && durationType && startDate && reason);
+  }
+
+  document.getElementById('btnSubmit').onclick = async function() {
+    showStatus('กำลังส่ง...', 'loading');
+    document.getElementById('btnSubmit').disabled = true;
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value || startDate;
+    const payload = {
+      action: 'leave',
+      lineUserId: userId,
+      leaveType: leaveType,
+      durationType: durationType,
+      startDate: startDate,
+      endDate: endDate,
+      totalHours: document.getElementById('totalHours').value || null,
+      reason: document.getElementById('reason').value
+    };
+    try {
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST', headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload)
+      });
+      const json = await res.json();
+      if (json.ok) {
+        showStatus('✅ ส่งใบลาเรียบร้อย ' + json.leaveId, 'success');
+        setTimeout(function() { liff.closeWindow(); }, 2500);
+      } else {
+        showStatus('❌ ' + (json.message || json.error), 'error');
+        document.getElementById('btnSubmit').disabled = false;
+      }
+    } catch (err) {
+      showStatus('❌ ' + err.message, 'error');
+      document.getElementById('btnSubmit').disabled = false;
+    }
+  };
+
+  function showStatus(t, l) {
+    const el = document.getElementById('status');
+    el.textContent = t; el.className = 'show ' + l;
+  }
+</script>
+</body>
+</html>

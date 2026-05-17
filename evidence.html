@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>แนบหลักฐาน — Mini HR App</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans Thai', system-ui, sans-serif; background: #FFF8F0; padding: 16px; }
+  .header {
+    background: linear-gradient(135deg, #F2A640, #F28C28); color: #fff;
+    padding: 20px; border-radius: 16px; margin-bottom: 16px;
+  }
+  .header h1 { font-size: 22px; }
+  .header-en { font-size: 11px; opacity: 0.75; margin-top: 4px; }
+  .header p { font-size: 13px; opacity: 0.9; margin-top: 4px; }
+  .field {
+    background: #fff; padding: 14px; border-radius: 10px; margin-bottom: 10px;
+  }
+  .field label { font-size: 12px; color: #777; display: block; margin-bottom: 6px; }
+  .label-en { font-size: 10px; color: #AAA; opacity: 0.8; margin-top: 2px; }
+  .field input, .field textarea {
+    width: 100%; border: 1px solid #DDD; padding: 10px; border-radius: 6px; font-size: 14px; font-family: inherit;
+  }
+  .info-box {
+    background: #FFF3E6; border-left: 4px solid #F28C28; padding: 12px;
+    border-radius: 8px; margin-bottom: 12px;
+  }
+  .info-box .key { font-size: 12px; color: #777; }
+  .info-box .val { font-size: 14px; font-weight: 700; }
+  .photo-box { background: #fff; padding: 16px; border-radius: 10px; text-align: center; margin-bottom: 10px; }
+  .photo-box .btn {
+    background: #06C755; color: #fff; border: none; padding: 12px 20px;
+    border-radius: 8px; font-size: 14px; font-weight: 700; width: 100%;
+  }
+  .preview { max-width: 250px; margin-top: 10px; border-radius: 8px; display: none; }
+  .btn-submit {
+    background: #D4550A; color: #fff; border: none; padding: 16px;
+    border-radius: 12px; font-size: 17px; font-weight: 700; width: 100%; margin-top: 8px;
+  }
+  .btn-submit:disabled { background: #AAA; }
+  #status { margin-top: 12px; padding: 12px; border-radius: 8px; text-align: center; display: none; }
+  #status.show { display: block; }
+  #status.success { background: #1F7A1F; color: #fff; }
+  #status.error { background: #B23A3A; color: #fff; }
+  #status.loading { background: #F2A640; color: #fff; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>📎 แนบหลักฐานเพิ่ม</h1>
+  <p>ผู้อนุมัติขอข้อมูลเพิ่มเติม<div class="header-en">Submit Evidence</div></p>
+</div>
+
+<div class="info-box">
+  <div class="key">รหัสคำขอ<div style="font-size: 9px; color: #AAA; margin-top: 1px;">Request ID</div></div>
+  <div class="val" id="recId">-</div>
+  <div class="key" style="margin-top:8px;">ประเภท<div style="font-size: 9px; color: #AAA; margin-top: 1px;">Type</div></div>
+  <div class="val" id="recType">-</div>
+</div>
+
+<div class="photo-box">
+  <button class="btn" id="btnFile"><span class="btn-text">📸 เลือกไฟล์/ถ่ายรูป</span><span class="btn-en">Choose File/Photo</span></button>
+  <input type="file" id="fileInput" accept="image/*" style="display:none">
+  <img id="preview" class="preview">
+</div>
+
+<div class="field"><label>หมายเหตุ (optional)<div class="label-en">Notes</div></label><textarea id="note" rows="2"></textarea></div>
+
+<button class="btn-submit" id="btnSubmit" disabled><span class="btn-text">ส่งหลักฐาน</span><span class="btn-en">Submit Evidence</span></button>
+<div id="status"></div>
+
+<script>
+const LIFF_ID = '<?= LIFF_ID ?>';
+const APPS_SCRIPT_URL = '<?= SCRIPT_URL ?>';
+  let userId = null;
+  let imageBase64 = null;
+
+  // Parse query params
+  const params = new URLSearchParams(window.location.search);
+  const recordId = params.get('id');
+  const recordType = params.get('type') || 'leave';
+
+  document.getElementById('recId').textContent = recordId || '-';
+  document.getElementById('recType').textContent = recordType === 'leave' ? 'ใบลา' : 'OT';
+
+  (async function init() {
+    await liff.init({ liffId: LIFF_ID, withLoginOnExternalBrowser: true });
+    if (!liff.isLoggedIn()) liff.login();
+    const profile = await liff.getProfile();
+    userId = profile.userId;
+  })();
+
+  document.getElementById('btnFile').onclick = function() {
+    document.getElementById('fileInput').click();
+  };
+
+  document.getElementById('fileInput').onchange = async function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    imageBase64 = await resizeAndEncode(file);
+    document.getElementById('preview').src = 'data:image/jpeg;base64,' + imageBase64;
+    document.getElementById('preview').style.display = 'block';
+    document.getElementById('btnSubmit').disabled = false;
+  };
+
+  async function resizeAndEncode(file) {
+    const img = await new Promise(function(res) {
+      const r = new FileReader();
+      r.onload = function() {
+        const i = new Image();
+        i.onload = function() { res(i); };
+        i.src = r.result;
+      };
+      r.readAsDataURL(file);
+    });
+    const canvas = document.createElement('canvas');
+    const maxW = 1280;
+    const scale = img.width > maxW ? maxW / img.width : 1;
+    canvas.width = img.width * scale;
+    canvas.height = img.height * scale;
+    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+  }
+
+  document.getElementById('btnSubmit').onclick = async function() {
+    showStatus('กำลังส่ง...', 'loading');
+    document.getElementById('btnSubmit').disabled = true;
+    const payload = {
+      action: 'evidence',
+      lineUserId: userId,
+      id: recordId,
+      type: recordType,
+      evidenceBase64: imageBase64,
+      note: document.getElementById('note').value
+    };
+    try {
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST', headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload)
+      });
+      const json = await res.json();
+      if (json.ok) {
+        showStatus('✅ ส่งหลักฐานเรียบร้อย', 'success');
+        setTimeout(function() { liff.closeWindow(); }, 2000);
+      } else {
+        showStatus('❌ ' + (json.message || json.error), 'error');
+        document.getElementById('btnSubmit').disabled = false;
+      }
+    } catch (err) {
+      showStatus('❌ ' + err.message, 'error');
+      document.getElementById('btnSubmit').disabled = false;
+    }
+  };
+
+  function showStatus(t, l) {
+    const el = document.getElementById('status');
+    el.textContent = t; el.className = 'show ' + l;
+  }
+</script>
+</body>
+</html>

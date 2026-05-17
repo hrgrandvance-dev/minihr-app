@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>ดูยอด — Mini HR App</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans Thai', system-ui, sans-serif; background: #FFF8F0; padding: 16px; color: #1A1A1A; }
+  .header {
+    background: linear-gradient(135deg, #D4550A, #F28C28); color: #fff;
+    padding: 20px; border-radius: 16px; margin-bottom: 16px;
+  }
+  .header h1 { font-size: 22px; }
+  .header-en { font-size: 11px; opacity: 0.75; margin-top: 4px; }
+  .header .name { font-size: 14px; opacity: 0.9; margin-top: 4px; }
+  .card { background: #fff; padding: 18px; border-radius: 12px; margin-bottom: 12px; }
+  .card .title { font-size: 13px; color: #777; margin-bottom: 10px; }
+  .card .title-en { font-size: 10px; color: #AAA; opacity: 0.8; margin-top: 2px; }
+  .big-amount { font-size: 38px; font-weight: 900; color: #D4550A; }
+  .vat { font-size: 12px; color: #999; margin-top: 4px; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+  .stat { background: #FFF3E6; padding: 12px; border-radius: 8px; text-align: center; }
+  .stat .n { font-size: 24px; font-weight: 800; color: #D4550A; }
+  .stat .l { font-size: 11px; color: #777; }
+  .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #F0E0D0; }
+  .row:last-child { border-bottom: none; }
+  .row .lab { color: #555; font-size: 14px; }
+  .row .val { font-weight: 700; font-size: 15px; }
+  .row .val.green { color: #1F7A1F; }
+  .row .val.red { color: #B23A3A; }
+  .leave-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .leave-box { background: #FFF3E6; padding: 12px; border-radius: 8px; text-align: center; }
+  .leave-box .n { font-size: 22px; font-weight: 800; color: #1A1A1A; }
+  .leave-box .l { font-size: 11px; color: #777; }
+  .leave-box .max { font-size: 10px; color: #999; }
+  .pending-badge {
+    display: inline-block; background: #F2A640; color: #fff;
+    padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700;
+  }
+  #loading { text-align: center; padding: 40px; color: #999; }
+</style>
+</head>
+<body>
+<div id="loading">กำลังโหลดข้อมูล...</div>
+
+<div id="content" style="display:none;">
+  <div class="header">
+    <h1>💰 ดูยอด</h1>
+    <div style="font-size: 11px; opacity: 0.75;">Salary Dashboard</div>
+    <div class="name" id="empName">-</div>
+  </div>
+
+  <div class="card">
+    <div class="title">ยอดประมาณการเดือนนี้ (<span id="period">-</span>)<div class="title-en">Estimated Salary</div></div>
+    <div class="big-amount" id="estimate">฿0</div>
+    <div class="vat">ค่าจ้าง + OT - หัก</div>
+    <div class="stats">
+      <div class="stat"><div class="n" id="workDays">0</div><div class="l">วันทำงาน<div style="font-size: 9px; color: #999; margin-top: 2px;">Working Days</div></div></div>
+      <div class="stat"><div class="n" id="otHours">0</div><div class="l">OT (ชม.)<div style="font-size: 9px; color: #999; margin-top: 2px;">OT Hours</div></div></div>
+      <div class="stat"><div class="n" id="pendingCount">0</div><div class="l">รออนุมัติ<div style="font-size: 9px; color: #999; margin-top: 2px;">Pending</div></div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="title">รายละเอียดประมาณการ</div>
+    <div class="row"><span class="lab">ค่าจ้างพื้นฐาน</span><span class="val" id="basePay">฿0</span></div>
+    <div class="row"><span class="lab">ค่า OT</span><span class="val" id="otPay">฿0</span></div>
+    <div class="row"><span class="lab">เงินเพิ่ม</span><span class="val green" id="bonus">฿0</span></div>
+    <div class="row"><span class="lab">เงินหัก</span><span class="val red" id="deduction">฿0</span></div>
+  </div>
+
+  <div class="card">
+    <div class="title">สิทธิ์ลาคงเหลือ</div>
+    <div class="leave-grid">
+      <div class="leave-box">
+        <div class="n" id="sickLeft">-</div>
+        <div class="l">ลาป่วย</div>
+        <div class="max">จาก <span id="sickMax">-</span></div>
+      </div>
+      <div class="leave-box">
+        <div class="n" id="personalLeft">-</div>
+        <div class="l">ลากิจ</div>
+        <div class="max">จาก <span id="personalMax">-</span></div>
+      </div>
+      <div class="leave-box">
+        <div class="n" id="vacationLeft">-</div>
+        <div class="l">พักร้อน</div>
+        <div class="max">จาก <span id="vacationMax">-</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="lastPaymentCard" style="display:none;">
+    <div class="title">งวดล่าสุด</div>
+    <div class="row"><span class="lab" id="lastPeriod">-</span><span class="val" id="lastTotal">-</span></div>
+    <div class="row"><span class="lab">สถานะ</span><span class="val" id="lastStatus">-</span></div>
+  </div>
+</div>
+
+<script>
+const LIFF_ID = '<?= LIFF_ID ?>';
+const APPS_SCRIPT_URL = '<?= SCRIPT_URL ?>';
+
+  (async function init() {
+    await liff.init({ liffId: LIFF_ID });
+    if (!liff.isLoggedIn()) liff.login();
+    const profile = await liff.getProfile();
+    const userId = profile.userId;
+
+    try {
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST', headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'balance', lineUserId: userId })
+      });
+      const json = await res.json();
+      if (!json.ok) { alert(json.error); return; }
+      render(json);
+    } catch (err) {
+      alert('โหลดข้อมูลไม่ได้: ' + err.message);
+    }
+  })();
+
+  function render(d) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('content').style.display = 'block';
+
+    document.getElementById('empName').textContent =
+      d.employee.id + ' · ' + d.employee.name;
+    document.getElementById('period').textContent = d.period;
+    document.getElementById('estimate').textContent =
+      '฿' + Number(d.estimateTotal || 0).toLocaleString();
+    document.getElementById('workDays').textContent = d.workDays;
+    document.getElementById('otHours').textContent = d.otHours;
+    document.getElementById('pendingCount').textContent = d.pending.leaves + d.pending.ot;
+    document.getElementById('basePay').textContent = '฿' + Number(d.basePay).toLocaleString();
+    document.getElementById('otPay').textContent = '฿' + Number(d.otPay).toLocaleString();
+    document.getElementById('bonus').textContent = '+฿' + Number(d.bonus).toLocaleString();
+    document.getElementById('deduction').textContent = '-฿' + Number(d.deduction).toLocaleString();
+
+    document.getElementById('sickLeft').textContent = d.leaveBalance.sick.remaining;
+    document.getElementById('sickMax').textContent = d.leaveBalance.sick.quota;
+    document.getElementById('personalLeft').textContent = d.leaveBalance.personal.remaining;
+    document.getElementById('personalMax').textContent = d.leaveBalance.personal.quota;
+    document.getElementById('vacationLeft').textContent = d.leaveBalance.vacation.remaining;
+    document.getElementById('vacationMax').textContent = d.leaveBalance.vacation.quota;
+
+    if (d.lastPayment) {
+      document.getElementById('lastPaymentCard').style.display = 'block';
+      document.getElementById('lastPeriod').textContent = 'งวด ' + d.lastPayment.period;
+      document.getElementById('lastTotal').textContent =
+        '฿' + Number(d.lastPayment.total).toLocaleString();
+      document.getElementById('lastStatus').textContent = d.lastPayment.status;
+    }
+  }
+</script>
+</body>
+</html>

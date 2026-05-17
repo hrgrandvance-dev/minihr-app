@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>เครื่องมือ HR — Mini HR App</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans Thai', system-ui, sans-serif; background: #FFF8F0; color: #1A1A1A; }
+  .header {
+    background: linear-gradient(135deg, #1A1A1A, #2A1A0A); color: #fff;
+    padding: 20px 16px; position: sticky; top: 0; z-index: 10;
+  }
+  .header h1 { font-size: 20px; }
+  .header-en { font-size: 11px; opacity: 0.75; margin-top: 4px; }
+
+  .tabs {
+    display: flex; overflow-x: auto; background: #fff; border-bottom: 1px solid #E0D0C0;
+    position: sticky; top: 64px; z-index: 9;
+  }
+  .tab {
+    flex: 0 0 auto; padding: 12px 16px; font-size: 13px; font-weight: 600;
+    color: #777; cursor: pointer; border-bottom: 3px solid transparent;
+  }
+  .tab-en { font-size: 9px; color: #AAA; opacity: 0.8; margin-top: 2px; }
+  .tab.active { color: #D4550A; border-color: #D4550A; }
+
+  .content { padding: 16px; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .card {
+    background: #fff; padding: 14px; border-radius: 10px; margin-bottom: 10px;
+  }
+  .card .row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 14px; }
+  .card .row .lab { color: #777; }
+
+  .emp-item {
+    background: #fff; padding: 12px; border-radius: 8px; margin-bottom: 8px;
+    border-left: 4px solid #F28C28; cursor: pointer;
+  }
+  .emp-item .name { font-weight: 700; font-size: 15px; }
+  .emp-item .meta { font-size: 12px; color: #777; margin-top: 2px; }
+
+  .btn {
+    background: #D4550A; color: #fff; border: none; padding: 12px 16px;
+    border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer;
+    margin-bottom: 10px; width: 100%;
+  }
+  .btn-secondary {
+    background: #fff; color: #D4550A; border: 2px solid #D4550A;
+  }
+
+  .modal-bg {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    z-index: 100; padding: 20px; overflow: auto;
+  }
+  .modal-bg.show { display: block; }
+  .modal {
+    background: #fff; padding: 20px; border-radius: 14px; max-width: 500px;
+    margin: 50px auto;
+  }
+  .field { margin-bottom: 10px; }
+  .field label { font-size: 12px; color: #777; display: block; margin-bottom: 4px; }
+  .field input, .field select {
+    width: 100%; padding: 10px; border: 1px solid #DDD; border-radius: 6px; font-size: 14px;
+  }
+
+  .loading-state, .empty-state {
+    text-align: center; padding: 40px; color: #999;
+  }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🛠️ เครื่องมือ HR</h1>
+  <div style="font-size: 11px; opacity: 0.75;">HR Tools</div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="employees">👥 พนักงาน<div class="tab-en">Employees</div></div>
+  <div class="tab" data-tab="payitems">💵 เพิ่ม/หัก<div class="tab-en">Pay Items</div></div>
+  <div class="tab" data-tab="quota">📊 โควต้าลา<div class="tab-en">Quota</div></div>
+  <div class="tab" data-tab="holidays">📅 วันหยุด<div class="tab-en">Holidays</div></div>
+  <div class="tab" data-tab="report">📈 รายงาน<div class="tab-en">Report</div></div>
+</div>
+
+<div class="content">
+
+  <div class="panel active" id="panel-employees">
+    <button class="btn" id="btnAddEmp"><span class="btn-text">+ เพิ่มพนักงาน</span><span class="btn-en">Add Employee</span></button>
+    <div id="empList" class="loading-state">กำลังโหลด...</div>
+  </div>
+
+  <div class="panel" id="panel-payitems">
+    <button class="btn" id="btnAddPayItem"><span class="btn-text">+ เพิ่มรายการ</span><span class="btn-en">Add Item</span></button>
+    <div class="field">
+      <label>งวด</label>
+      <input type="month" id="payPeriod">
+    </div>
+    <div id="payList" class="loading-state">เลือกงวดก่อน...</div>
+  </div>
+
+  <div class="panel" id="panel-quota">
+    <div class="field"><label>ปี</label><input type="number" id="quotaYear" min="2024" max="2030"></div>
+    <div id="quotaList" class="loading-state">กำลังโหลด...</div>
+  </div>
+
+  <div class="panel" id="panel-holidays">
+    <button class="btn" id="btnAddHoliday"><span class="btn-text">+ เพิ่มวันหยุด</span><span class="btn-en">Add Holiday</span></button>
+    <div id="holidayList" class="loading-state">กำลังโหลด...</div>
+  </div>
+
+  <div class="panel" id="panel-report">
+    <div class="field"><label>งวด</label><input type="month" id="reportPeriod"></div>
+    <button class="btn" id="btnGenReport"><span class="btn-text">สร้างรายงาน</span><span class="btn-en">Generate Report</span></button>
+    <button class="btn btn-secondary" id="btnClosePeriod"><span class="btn-text">📦 ปิดงวด + คำนวณ Payroll</span><span class="btn-en">Close Period + Calc</span></button>
+    <div id="reportList" class="empty-state">เลือกงวดและกดสร้างรายงาน</div>
+  </div>
+
+</div>
+
+<!-- Edit Employee Modal -->
+<div class="modal-bg" id="empModal">
+  <div class="modal">
+    <h2 id="empModalTitle">แก้ไขพนักงาน</h2>
+    <div class="field"><label>รหัส</label><input id="empId" readonly></div>
+    <div class="field"><label>ชื่อ-นามสกุล</label><input id="empName"></div>
+    <div class="field"><label>เบอร์โทร</label><input id="empPhone"></div>
+    <div class="field"><label>แผนก</label><input id="empDept"></div>
+    <div class="field"><label>ตำแหน่ง</label><input id="empPosition"></div>
+    <div class="field"><label>ค่าจ้าง/เดือน</label><input id="empBasePay" type="number"></div>
+    <div class="field"><label>ค่า OT/ชม.</label><input id="empOtRate" type="number"></div>
+    <div class="field"><label>ผู้อนุมัติ L1</label><select id="empApprover1"></select></div>
+    <div class="field"><label>ผู้อนุมัติ L2</label><select id="empApprover2"></select></div>
+    <div class="field"><label>ผู้อนุมัติ L3</label><select id="empApprover3"></select></div>
+    <div class="field"><label>สถานะ</label>
+      <select id="empActive">
+        <option value="true">ใช้งาน</option>
+        <option value="false">ไม่ใช้งาน</option>
+      </select>
+    </div>
+    <button class="btn" id="btnSaveEmp"><span class="btn-text">บันทึก</span><span class="btn-en">Save</span></button>
+    <button class="btn btn-secondary" onclick="document.getElementById('empModal').classList.remove('show')"><span class="btn-text">ยกเลิก</span><span class="btn-en">Cancel</span></button>
+  </div>
+</div>
+
+<script>
+  const LIFF_ID = '<?= LIFF_ID ?>';
+const APPS_SCRIPT_URL = '<?= SCRIPT_URL ?>';
+  let userId = null;
+  let employeesCache = [];
+
+  (async function init() {
+    await liff.init({ liffId: LIFF_ID, withLoginOnExternalBrowser: true });
+    if (!liff.isLoggedIn()) liff.login();
+    const profile = await liff.getProfile();
+    userId = profile.userId;
+    setupTabs();
+    loadEmployees();
+    // Default to current month
+    const today = new Date();
+    const period = today.toISOString().substring(0, 7);
+    document.getElementById('payPeriod').value = period;
+    document.getElementById('reportPeriod').value = period;
+    document.getElementById('quotaYear').value = today.getFullYear();
+  })();
+
+  function setupTabs() {
+    document.querySelectorAll('.tab').forEach(function(t) {
+      t.onclick = function() {
+        document.querySelectorAll('.tab').forEach(function(x) { x.classList.remove('active'); });
+        document.querySelectorAll('.panel').forEach(function(x) { x.classList.remove('active'); });
+        t.classList.add('active');
+        document.getElementById('panel-' + t.dataset.tab).classList.add('active');
+      };
+    });
+  }
+
+  async function api(action, data) {
+    data = data || {};
+    data.action = action;
+    data.lineUserId = userId;
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(data)
+    });
+    return await res.json();
+  }
+
+  // ==================== EMPLOYEES ====================
+  async function loadEmployees() {
+    const r = await api('hr_employees');
+    if (!r.ok) { document.getElementById('empList').textContent = 'Error: ' + r.error; return; }
+    employeesCache = r.employees;
+    renderEmployees();
+  }
+
+  function renderEmployees() {
+    const el = document.getElementById('empList');
+    if (employeesCache.length === 0) { el.textContent = 'ยังไม่มีพนักงาน'; return; }
+    el.className = '';
+    el.innerHTML = '';
+    employeesCache.forEach(function(emp) {
+      const item = document.createElement('div');
+      item.className = 'emp-item';
+      item.innerHTML =
+        '<div class="name">' + emp.display_name + ' (' + emp.employee_id + ')</div>' +
+        '<div class="meta">' + (emp.department || '-') + ' · ' + (emp.position || '-') +
+        ' · ' + (emp.is_active ? 'ใช้งาน' : 'ไม่ใช้งาน') + '</div>';
+      item.onclick = function() { openEmpModal(emp); };
+      el.appendChild(item);
+    });
+  }
+
+  function openEmpModal(emp) {
+    document.getElementById('empModalTitle').textContent = 'แก้ไข: ' + emp.display_name;
+    document.getElementById('empId').value = emp.employee_id;
+    document.getElementById('empName').value = emp.display_name || '';
+    document.getElementById('empPhone').value = emp.phone || '';
+    document.getElementById('empDept').value = emp.department || '';
+    document.getElementById('empPosition').value = emp.position || '';
+    document.getElementById('empBasePay').value = emp.base_pay_monthly || 0;
+    document.getElementById('empOtRate').value = emp.ot_rate_per_hour || 0;
+
+    // Populate approver selects
+    ['1','2','3'].forEach(function(level) {
+      const sel = document.getElementById('empApprover' + level);
+      sel.innerHTML = '<option value="">-- ไม่มี --</option>';
+      employeesCache.filter(function(e) { return e.employee_id !== emp.employee_id; })
+        .forEach(function(e) {
+          const opt = document.createElement('option');
+          opt.value = e.employee_id;
+          opt.textContent = e.display_name + ' (' + e.employee_id + ')';
+          if (emp['approver_L' + level + '_id'] === e.employee_id) opt.selected = true;
+          sel.appendChild(opt);
+        });
+    });
+    document.getElementById('empActive').value = emp.is_active ? 'true' : 'false';
+    document.getElementById('empModal').classList.add('show');
+  }
+
+  document.getElementById('btnSaveEmp').onclick = async function() {
+    const empId = document.getElementById('empId').value;
+    const updates = {
+      display_name: document.getElementById('empName').value,
+      phone: document.getElementById('empPhone').value,
+      department: document.getElementById('empDept').value,
+      position: document.getElementById('empPosition').value,
+      base_pay_monthly: Number(document.getElementById('empBasePay').value || 0),
+      ot_rate_per_hour: Number(document.getElementById('empOtRate').value || 0),
+      approver_L1_id: document.getElementById('empApprover1').value,
+      approver_L2_id: document.getElementById('empApprover2').value,
+      approver_L3_id: document.getElementById('empApprover3').value,
+      is_active: document.getElementById('empActive').value === 'true'
+    };
+    const r = await api('hr_update_emp', { employeeId: empId, updates: updates });
+    if (r.ok) {
+      alert('บันทึกสำเร็จ');
+      document.getElementById('empModal').classList.remove('show');
+      loadEmployees();
+    } else {
+      alert('Error: ' + r.error);
+    }
+  };
+
+  // ==================== PAY ITEMS ====================
+  document.getElementById('payPeriod').onchange = loadPayItems;
+  async function loadPayItems() {
+    const period = document.getElementById('payPeriod').value;
+    if (!period) return;
+    const r = await api('hr_pay_items', { period: period });
+    const el = document.getElementById('payList');
+    el.className = '';
+    if (!r.ok) { el.textContent = 'Error'; return; }
+    if (r.items.length === 0) { el.textContent = 'ยังไม่มีรายการ'; return; }
+    el.innerHTML = r.items.map(function(i) {
+      return '<div class="card">' +
+        '<div class="row"><span class="lab">พนักงาน</span><span>' + (i.employee_id || 'ทุกคน') + '</span></div>' +
+        '<div class="row"><span class="lab">ประเภท</span><span>' + (i.type === 'bonus' ? '✅ เพิ่ม' : '❌ หัก') + '</span></div>' +
+        '<div class="row"><span class="lab">จำนวน</span><span>' + Number(i.amount).toLocaleString() + ' บาท</span></div>' +
+        '<div class="row"><span class="lab">เหตุผล</span><span>' + (i.reason || '-') + '</span></div>' +
+        '</div>';
+    }).join('');
+  }
+
+  document.getElementById('btnAddPayItem').onclick = async function() {
+    const empId = prompt('Employee ID (เว้นว่าง = ทุกคน):');
+    const type = prompt('ประเภท (bonus/deduction):');
+    const amount = prompt('จำนวน (บาท):');
+    const reason = prompt('เหตุผล:');
+    const period = document.getElementById('payPeriod').value;
+    if (!type || !amount) return;
+    const r = await api('hr_add_payitem', {
+      item: {
+        employee_id: empId || '',
+        period: period,
+        type: type,
+        amount: Number(amount),
+        reason: reason
+      }
+    });
+    if (r.ok) { alert('เพิ่มแล้ว'); loadPayItems(); }
+    else alert('Error');
+  };
+
+  // ==================== REPORT ====================
+  document.getElementById('btnGenReport').onclick = async function() {
+    const period = document.getElementById('reportPeriod').value;
+    const r = await api('hr_report', { period: period });
+    const el = document.getElementById('reportList');
+    el.className = '';
+    if (!r.ok) { el.textContent = 'Error'; return; }
+    el.innerHTML = '<div class="card"><h3>งวด ' + r.period + '</h3></div>' +
+      r.report.map(function(row) {
+        return '<div class="card">' +
+          '<div class="row"><span class="lab">' + row.name + '</span><span>' + row.employee_id + '</span></div>' +
+          '<div class="row"><span class="lab">วันทำงาน</span><span>' + row.work_days + ' วัน</span></div>' +
+          '<div class="row"><span class="lab">OT</span><span>' + row.ot_hours + ' ชม.</span></div>' +
+          '<div class="row"><span class="lab">เพิ่ม</span><span>+' + Number(row.bonus).toLocaleString() + '</span></div>' +
+          '<div class="row"><span class="lab">หัก</span><span>-' + Number(row.deduction).toLocaleString() + '</span></div>' +
+          '</div>';
+      }).join('');
+  };
+
+  document.getElementById('btnClosePeriod').onclick = async function() {
+    const period = document.getElementById('reportPeriod').value;
+    if (!confirm('ยืนยันการปิดงวด ' + period + ' ?\n\nระบบจะคำนวณยอดและสร้าง Payment records')) return;
+    const r = await api('close_period', { period: period });
+    if (r.ok) {
+      alert('ปิดงวดเรียบร้อย\n' + r.count + ' รายการ\nรวม ' + Number(r.totalSum).toLocaleString() + ' บาท');
+    } else if (r.error === 'has_pending') {
+      if (confirm('มีคำขอค้าง: ' + r.pendingLeaves + ' ลา + ' + r.pendingOT + ' OT\n\nต้องการปิดงวดต่อ?')) {
+        const r2 = await api('close_period', { period: period, force: true });
+        if (r2.ok) alert('ปิดงวดเรียบร้อย (force)');
+        else alert('Error: ' + r2.error);
+      }
+    } else {
+      alert('Error: ' + r.error);
+    }
+  };
+
+  // ==================== Stubs ====================
+  document.getElementById('btnAddEmp').onclick = function() {
+    alert('การเพิ่มพนักงานใหม่ ให้ใช้หน้า "ลงทะเบียน" ของพนักงานคนนั้นเอง\n\nหลังจากลงทะเบียน แล้วเข้ามาที่นี่เพื่อตั้ง approver และค่าจ้าง');
+  };
+  document.getElementById('btnAddHoliday').onclick = function() {
+    alert('TODO: ฟอร์มเพิ่มวันหยุด — แก้ที่ Sheet "Holidays" โดยตรงไปก่อน');
+  };
+</script>
+</body>
+</html>
+
