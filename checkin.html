@@ -105,6 +105,8 @@
     font-size: 15px;
     font-weight: 600;
     margin-top: 4px;
+    white-space: pre-line;
+    line-height: 1.5;
   }
 
   .info-box.warn {
@@ -115,6 +117,17 @@
   .info-box.ok {
     border-color: #1F7A1F;
     background: #F0FFF0;
+  }
+
+  .company-badge {
+    display: inline-block;
+    background: #1F7A1F;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 20px;
+    margin-top: 4px;
   }
 
   .camera-section {
@@ -133,6 +146,11 @@
     display: none;
   }
 
+  /*
+    [FIX] ใช้ <button> ธรรมดา + JS .click() บน input ที่ซ่อนอยู่
+    วิธีนี้ทำงานได้ใน LINE LIFF WebView ทุกเวอร์ชัน
+    ไม่ใช้ <label> ครอบ <input> เพราะ LIFF บางเวอร์ชันบล็อก event chain
+  */
   .btn-camera {
     background: #06C755;
     color: #fff;
@@ -143,6 +161,25 @@
     font-weight: 700;
     cursor: pointer;
     width: 100%;
+    display: block;
+    text-align: center;
+  }
+
+  .btn-camera:active {
+    opacity: 0.85;
+  }
+
+  /*
+    [FIX] ซ่อน input โดยไม่ใช้ display:none (บาง WebView ไม่เปิด file picker)
+    ใช้ position:absolute + opacity:0 + pointer-events:none แทน
+  */
+  .hidden-file-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
   }
 
   .btn-submit {
@@ -242,24 +279,35 @@
     📡 GPS
     <div class="label-en">Location</div>
   </div>
-
   <div class="value" id="gpsValue">
     กำลังขอตำแหน่ง...
+  </div>
+  <div id="companyBadge" style="display:none">
+    <span class="company-badge">🏢 GRANDVANCE TECHNOLOGY (THAILAND) CO., LTD.</span>
   </div>
 </div>
 
 <div class="camera-section">
-  <button type="button" class="btn-camera" id="btnCamera">
-    📸 ถ่ายรูปสด
-  </button>
-
+  <!--
+    [FIX] แยก input และ button ออกจากกัน
+    - input ซ่อนด้วย .hidden-file-input (ไม่ใช้ display:none)
+    - button เรียก input.click() ผ่าน JS โดยตรง
+    - capture="user" บังคับเปิดกล้องเท่านั้น (ไม่มี accept="image/*" ร่วม
+      เพราะบาง Android WebView จะ override capture เป็นแกลเลอรีแทน)
+  -->
   <input
     type="file"
     id="fileInput"
-    accept="image/*"
     capture="user"
-    style="display:none"
+    class="hidden-file-input"
   >
+  <button
+    type="button"
+    class="btn-camera"
+    onclick="document.getElementById('fileInput').click()"
+  >
+    📸 ถ่ายรูปสด (กล้องเท่านั้น)
+  </button>
 
   <img id="preview" class="preview" alt="preview">
 </div>
@@ -271,14 +319,32 @@
 <div id="status"></div>
 
 <script>
+  /* ══════════════════════════════════════════════
+     CONFIG
+  ══════════════════════════════════════════════ */
   var LIFF_ID = '2010077723-35YjoRoE';
   var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxBkocmZN1yPzozv74oJAq3-qbKky0-KM9a1ZTUrajg6Qh5eaJIikrB4vJcttXr_UWS/exec';
-  let currentSlot = 'IN';
-  let gpsCoords = null;
-  let gpsError = null;
-  let imageBase64 = null;
-  let userId = null;
 
+  var COMPANY = {
+    name:      'GRANDVANCE TECHNOLOGY (THAILAND) CO., LTD.',
+    lat:       13.59825,
+    lng:       100.70730,
+    radiusM:   200
+  };
+
+  /* ══════════════════════════════════════════════
+     STATE
+  ══════════════════════════════════════════════ */
+  var currentSlot  = 'IN';
+  var gpsCoords    = null;
+  var gpsError     = null;
+  var imageBase64  = null;
+  var userId       = null;
+  var locationName = '';
+
+  /* ══════════════════════════════════════════════
+     SLOT BUTTONS
+  ══════════════════════════════════════════════ */
   document.querySelectorAll('.slot-btn').forEach(function(btn) {
     btn.onclick = function() {
       document.querySelectorAll('.slot-btn').forEach(function(b) {
@@ -289,20 +355,25 @@
     };
   });
 
-  document.getElementById('btnCamera').onclick = function() {
-    document.getElementById('fileInput').click();
-  };
-
-  document.getElementById('fileInput').onchange = async function(e) {
-    const file = e.target.files[0];
+  /* ══════════════════════════════════════════════
+     FILE INPUT CHANGE
+  ══════════════════════════════════════════════ */
+  document.getElementById('fileInput').addEventListener('change', async function(e) {
+    var file = e.target.files && e.target.files[0];
     if (!file) return;
     await processImage(file);
-  };
+  });
 
-  document.getElementById('btnSubmit').onclick = async function() {
+  /* ══════════════════════════════════════════════
+     SUBMIT BUTTON
+  ══════════════════════════════════════════════ */
+  document.getElementById('btnSubmit').addEventListener('click', async function() {
     await submitCheckin();
-  };
+  });
 
+  /* ══════════════════════════════════════════════
+     LIFF INIT
+  ══════════════════════════════════════════════ */
   (async function init() {
     try {
       if (!LIFF_ID || LIFF_ID === '') {
@@ -314,7 +385,7 @@
         liff.login();
         return;
       }
-      const profile = await liff.getProfile();
+      var profile = await liff.getProfile();
       userId = profile.userId;
       if (!userId) {
         showStatus('❌ ไม่พบ LINE user id', 'error');
@@ -328,16 +399,19 @@
     }
   })();
 
+  /* ══════════════════════════════════════════════
+     GPS
+  ══════════════════════════════════════════════ */
   function requestGPS() {
     if (!navigator.geolocation) {
       gpsError = 'unsupported';
-      document.getElementById('gpsValue').innerHTML = '❌ อุปกรณ์ไม่รองรับ GPS';
+      document.getElementById('gpsValue').textContent = '❌ อุปกรณ์ไม่รองรับ GPS';
       document.getElementById('gpsBox').classList.add('warn');
       checkCanSubmit();
       return;
     }
 
-    document.getElementById('gpsValue').innerHTML = '🔄 กำลังค้นหาตำแหน่ง...';
+    document.getElementById('gpsValue').textContent = '🔄 กำลังค้นหาตำแหน่ง...';
 
     navigator.geolocation.getCurrentPosition(
       function(pos) {
@@ -346,7 +420,36 @@
           lng: pos.coords.longitude
         };
         gpsError = null;
-        document.getElementById('gpsValue').innerHTML = '✅ ' + gpsCoords.lat.toFixed(5) + ', ' + gpsCoords.lng.toFixed(5);
+
+        var coordText = gpsCoords.lat.toFixed(5) + ', ' + gpsCoords.lng.toFixed(5);
+        var distM = getDistanceM(gpsCoords.lat, gpsCoords.lng, COMPANY.lat, COMPANY.lng);
+        var atCompany = distM <= COMPANY.radiusM;
+
+        if (atCompany) {
+          locationName = COMPANY.name;
+          document.getElementById('gpsValue').textContent =
+            '✅ ' + COMPANY.name + '\n(' + coordText + ')';
+          document.getElementById('companyBadge').style.display = 'block';
+        } else {
+          document.getElementById('gpsValue').textContent =
+            '✅ ' + coordText + '\n🔍 กำลังค้นหาชื่อสถานที่...';
+          document.getElementById('companyBadge').style.display = 'none';
+
+          reverseGeocode(gpsCoords.lat, gpsCoords.lng).then(function(placeName) {
+            if (placeName) {
+              locationName = placeName;
+              document.getElementById('gpsValue').textContent =
+                '✅ ' + placeName + '\n(' + coordText + ')';
+            } else {
+              locationName = coordText;
+              document.getElementById('gpsValue').textContent = '✅ ' + coordText;
+            }
+          }).catch(function() {
+            locationName = coordText;
+            document.getElementById('gpsValue').textContent = '✅ ' + coordText;
+          });
+        }
+
         document.getElementById('gpsBox').classList.remove('warn');
         document.getElementById('gpsBox').classList.add('ok');
         checkCanSubmit();
@@ -362,7 +465,8 @@
         } else {
           gpsError = 'unknown';
         }
-        document.getElementById('gpsValue').innerHTML = '❌ เปิด GPS ไม่สำเร็จ<br><button class="retry-btn" onclick="requestGPS()">ลองใหม่</button>';
+        document.getElementById('gpsValue').innerHTML =
+          '❌ เปิด GPS ไม่สำเร็จ<br><button class="retry-btn" onclick="requestGPS()">ลองใหม่</button>';
         document.getElementById('gpsBox').classList.add('warn');
         checkCanSubmit();
       },
@@ -374,39 +478,113 @@
     );
   }
 
+  /* ══════════════════════════════════════════════
+     คำนวณระยะทาง (Haversine formula) — เมตร
+  ══════════════════════════════════════════════ */
+  function getDistanceM(lat1, lng1, lat2, lng2) {
+    var R = 6371000;
+    var dLat = (lat2 - lat1) * Math.PI / 180;
+    var dLng = (lng2 - lng1) * Math.PI / 180;
+    var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  /* ══════════════════════════════════════════════
+     Reverse Geocode — OpenStreetMap Nominatim
+  ══════════════════════════════════════════════ */
+  function reverseGeocode(lat, lng) {
+    var url = 'https://nominatim.openstreetmap.org/reverse'
+      + '?format=json'
+      + '&lat=' + lat
+      + '&lon=' + lng
+      + '&zoom=18'
+      + '&addressdetails=1';
+
+    return fetch(url, {
+      headers: { 'Accept-Language': 'th,en' }
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (!data || !data.address) return null;
+
+      var addr = data.address;
+      var name = data.name
+        || addr.amenity
+        || addr.shop
+        || addr.building
+        || addr.office
+        || addr.tourism
+        || addr.leisure;
+
+      var road    = addr.road || addr.pedestrian || addr.footway || '';
+      var suburb  = addr.suburb || addr.neighbourhood || addr.quarter || '';
+      var city    = addr.city || addr.town || addr.village || addr.county || '';
+      var state   = addr.state || '';
+
+      var parts = [];
+      if (name)   parts.push(name);
+      if (road)   parts.push(road);
+      if (suburb) parts.push(suburb);
+      if (city)   parts.push(city);
+
+      return parts.length > 0 ? parts.slice(0, 3).join(', ') : (city || state || null);
+    })
+    .catch(function(err) {
+      console.error('Reverse geocode error:', err);
+      return null;
+    });
+  }
+
+  /* ══════════════════════════════════════════════
+     PROCESS IMAGE — resize + watermark
+  ══════════════════════════════════════════════ */
   async function processImage(file) {
-    const img = await loadImage(file);
-    const canvas = document.createElement('canvas');
-    const maxW = 800;
+    var img = await loadImage(file);
+    var canvas = document.createElement('canvas');
+    var maxW = 800;
 
     if (img.width > maxW) {
-      canvas.width = maxW;
+      canvas.width  = maxW;
       canvas.height = Math.round((maxW / img.width) * img.height);
     } else {
-      canvas.width = img.width;
+      canvas.width  = img.width;
       canvas.height = img.height;
     }
 
-    const ctx = canvas.getContext('2d');
+    var ctx = canvas.getContext('2d');
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-    const barH = Math.max(70, canvas.height * 0.08);
-    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    var barH = Math.max(80, canvas.height * 0.10);
+    ctx.fillStyle = 'rgba(0,0,0,0.68)';
     ctx.fillRect(0, canvas.height - barH, canvas.width, barH);
+
+    var now      = new Date();
+    var datetime = now.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
+    var coordTxt = gpsCoords
+      ? gpsCoords.lat.toFixed(5) + ', ' + gpsCoords.lng.toFixed(5)
+      : 'GPS unavailable';
+
+    var placeLine = locationName || coordTxt;
+
+    var fontSize = Math.floor(barH * 0.22);
     ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold ' + Math.floor(barH * 0.28) + 'px sans-serif';
+    ctx.font = 'bold ' + fontSize + 'px sans-serif';
 
-    const now = new Date();
-    const datetime = now.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
-    const gpsTxt = gpsCoords ? gpsCoords.lat.toFixed(5) + ', ' + gpsCoords.lng.toFixed(5) : 'GPS unavailable';
+    ctx.fillText('🕐 ' + datetime,  12, canvas.height - barH + barH * 0.32);
+    ctx.fillText('📍 ' + placeLine, 12, canvas.height - barH + barH * 0.60);
 
-    ctx.fillText('🕐 ' + datetime, 14, canvas.height - barH + barH * 0.4);
-    ctx.fillText('📍 ' + gpsTxt, 14, canvas.height - barH + barH * 0.75);
+    if (locationName && locationName !== coordTxt) {
+      ctx.font = (fontSize - 2) + 'px sans-serif';
+      ctx.fillStyle = '#FFD9B3';
+      ctx.fillText('    (' + coordTxt + ')', 12, canvas.height - barH + barH * 0.85);
+    }
 
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.65);
+    var dataUrl = canvas.toDataURL('image/jpeg', 0.65);
     imageBase64 = dataUrl.split(',')[1];
 
-    const preview = document.getElementById('preview');
+    var preview = document.getElementById('preview');
     preview.src = dataUrl;
     preview.style.display = 'block';
 
@@ -415,12 +593,10 @@
 
   function loadImage(file) {
     return new Promise(function(resolve, reject) {
-      const reader = new FileReader();
+      var reader = new FileReader();
       reader.onload = function() {
-        const img = new Image();
-        img.onload = function() {
-          resolve(img);
-        };
+        var img = new Image();
+        img.onload = function() { resolve(img); };
         img.onerror = reject;
         img.src = reader.result;
       };
@@ -429,11 +605,17 @@
     });
   }
 
+  /* ══════════════════════════════════════════════
+     CHECK CAN SUBMIT
+  ══════════════════════════════════════════════ */
   function checkCanSubmit() {
-    const canSubmit = !!imageBase64 && !!userId;
+    var canSubmit = !!imageBase64 && !!userId;
     document.getElementById('btnSubmit').disabled = !canSubmit;
   }
 
+  /* ══════════════════════════════════════════════
+     SUBMIT CHECKIN
+  ══════════════════════════════════════════════ */
   async function submitCheckin() {
     if (!userId) {
       showStatus('❌ missing_line_user_id', 'error');
@@ -447,24 +629,23 @@
     showStatus('⏳ กำลังส่งข้อมูล...', 'loading');
     document.getElementById('btnSubmit').disabled = true;
 
-    const payload = {
-      action: 'checkin',
-      lineUserId: userId,
-      lat: gpsCoords ? gpsCoords.lat : 0,
-      lng: gpsCoords ? gpsCoords.lng : 0,
+    var payload = {
+      action:       'checkin',
+      lineUserId:   userId,
+      lat:          gpsCoords ? gpsCoords.lat : 0,
+      lng:          gpsCoords ? gpsCoords.lng : 0,
+      locationName: locationName || '',
       selfieBase64: imageBase64,
-      slot: currentSlot
+      slot:         currentSlot
     };
 
     try {
-      const res = await fetch(APPS_SCRIPT_URL, {
+      var res = await fetch(APPS_SCRIPT_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'text/plain'
-        },
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify(payload)
       });
-      const json = await res.json();
+      var json = await res.json();
 
       if (json.ok) {
         showStatus('✅ ลงเวลาเรียบร้อย', 'success');
@@ -484,8 +665,11 @@
     }
   }
 
+  /* ══════════════════════════════════════════════
+     SHOW STATUS
+  ══════════════════════════════════════════════ */
   function showStatus(text, level) {
-    const el = document.getElementById('status');
+    var el = document.getElementById('status');
     el.textContent = text;
     el.className = 'show ' + level;
   }
