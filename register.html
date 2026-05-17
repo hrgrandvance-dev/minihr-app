@@ -88,15 +88,21 @@
     text-align: center;
   }
 
-  .photo-box label {
+  .photo-box .photo-label {
     display: block;
     font-size: 12px;
     color: #777;
     margin-bottom: 8px;
     line-height: 1.3;
+    text-align: left;
   }
 
-  .photo-box .btn {
+  /*
+    ใช้ <button> ธรรมดา + JS .click() บน input ที่ซ่อนอยู่
+    วิธีนี้ทำงานได้ใน LINE LIFF WebView ทุกเวอร์ชัน
+    ไม่ใช้ <label> ครอบ <input> เพราะ LIFF บางเวอร์ชันบล็อก event chain
+  */
+  .btn-photo {
     background: #06C755;
     color: #fff;
     border: none;
@@ -112,14 +118,24 @@
     gap: 2px;
   }
 
-  .btn-text {
-    display: block;
+  .btn-photo:active {
+    opacity: 0.85;
   }
 
   .btn-en {
     font-size: 10px;
     opacity: 0.75;
     font-weight: 400;
+  }
+
+  /* input file ซ่อนจากมองเห็น แต่ยังอยู่ใน DOM ปกติ (ไม่ใช้ display:none) */
+  .hidden-file-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
   }
 
   .photo-box .preview {
@@ -279,30 +295,55 @@
   <input id="bankAccountName">
 </div>
 
+<!-- ===== SELFIE ===== -->
 <div class="photo-box">
-  <label>
+  <div class="photo-label">
     📸 ภาพใบหน้า (selfie) *
     <div class="label-en">Selfie Photo (required)</div>
-  </label>
-  <button class="btn" id="btnSelfie" type="button">
-    <span class="btn-text">ถ่ายรูป</span>
-    <span class="btn-en">Take Photo</span>
+  </div>
+
+  <!--
+    [FIX] ใช้ <button> + input.click() ผ่าน JS แทนการใช้ <label> ครอบ <input>
+    เพราะ LINE LIFF WebView บางเวอร์ชันไม่ส่ง click event ผ่าน label→input chain
+    accept="image/*" = เปิดทั้งกล้องและแกลเลอรี ให้ผู้ใช้เลือกเอง
+  -->
+  <input
+    type="file"
+    id="fileSelfie"
+    accept="image/*"
+    class="hidden-file-input"
+  >
+  <button type="button" class="btn-photo" onclick="document.getElementById('fileSelfie').click()">
+    <span>📷 ถ่ายรูป / เลือกจากคลัง</span>
+    <span class="btn-en">Take Photo or Choose from Gallery</span>
   </button>
-  <input type="file" id="fileSelfie" accept="image/*" style="display:none">
+
   <img id="previewSelfie" class="preview" alt="">
   <div id="statusSelfie" class="photo-status missing">⚠️ ยังไม่ได้ถ่ายรูป</div>
 </div>
 
+<!-- ===== ID CARD ===== -->
 <div class="photo-box">
-  <label>
+  <div class="photo-label">
     🆔 บัตรประชาชน *
     <div class="label-en">ID Card (required)</div>
-  </label>
-  <button class="btn" id="btnIdCard" type="button">
-    <span class="btn-text">ถ่ายรูป</span>
-    <span class="btn-en">Take Photo</span>
+  </div>
+
+  <!--
+    [FIX] เหมือนกัน — ใช้ <button> + input.click()
+    accept="image/*" = เปิดทั้งกล้องและแกลเลอรี
+  -->
+  <input
+    type="file"
+    id="fileIdCard"
+    accept="image/*"
+    class="hidden-file-input"
+  >
+  <button type="button" class="btn-photo" onclick="document.getElementById('fileIdCard').click()">
+    <span>🆔 ถ่ายรูป / เลือกจากคลัง</span>
+    <span class="btn-en">Take Photo or Choose from Gallery</span>
   </button>
-  <input type="file" id="fileIdCard" accept="image/*" style="display:none">
+
   <img id="previewIdCard" class="preview" alt="">
   <div id="statusIdCard" class="photo-status missing">⚠️ ยังไม่ได้ถ่ายรูป</div>
 </div>
@@ -340,44 +381,37 @@ let idCardBase64 = null;
   }
 })();
 
-document.getElementById('btnSelfie').onclick = function(e) {
-  e.preventDefault();
-  document.getElementById('fileSelfie').click();
-};
-
-document.getElementById('btnIdCard').onclick = function(e) {
-  e.preventDefault();
-  document.getElementById('fileIdCard').click();
-};
-
-document.getElementById('fileSelfie').onchange = async function(e) {
+/* ─── เมื่อรับรูป Selfie ─── */
+document.getElementById('fileSelfie').addEventListener('change', async function(e) {
   if (!e.target.files || e.target.files.length === 0) return;
   try {
     selfieBase64 = await resizeAndEncode(e.target.files[0]);
     document.getElementById('previewSelfie').src = 'data:image/jpeg;base64,' + selfieBase64;
     document.getElementById('previewSelfie').style.display = 'block';
-    document.getElementById('statusSelfie').textContent = '✅ ถ่ายรูปแล้ว';
+    document.getElementById('statusSelfie').textContent = '✅ เลือกรูปแล้ว';
     document.getElementById('statusSelfie').className = 'photo-status ok';
     checkCanSubmit();
   } catch(err) {
-    showStatus('❌ ไม่สามารถอ่านรูป selfie ได้', 'error');
+    showStatus('❌ ไม่สามารถอ่านรูป selfie ได้: ' + err.message, 'error');
   }
-};
+});
 
-document.getElementById('fileIdCard').onchange = async function(e) {
+/* ─── เมื่อรับรูป ID Card ─── */
+document.getElementById('fileIdCard').addEventListener('change', async function(e) {
   if (!e.target.files || e.target.files.length === 0) return;
   try {
     idCardBase64 = await resizeAndEncode(e.target.files[0]);
     document.getElementById('previewIdCard').src = 'data:image/jpeg;base64,' + idCardBase64;
     document.getElementById('previewIdCard').style.display = 'block';
-    document.getElementById('statusIdCard').textContent = '✅ ถ่ายรูปแล้ว';
+    document.getElementById('statusIdCard').textContent = '✅ เลือกรูปแล้ว';
     document.getElementById('statusIdCard').className = 'photo-status ok';
     checkCanSubmit();
   } catch(err) {
-    showStatus('❌ ไม่สามารถอ่านรูปบัตรประชาชนได้', 'error');
+    showStatus('❌ ไม่สามารถอ่านรูปบัตรประชาชนได้: ' + err.message, 'error');
   }
-};
+});
 
+/* ─── Resize + Encode เป็น base64 ─── */
 async function resizeAndEncode(file) {
   const img = await new Promise(function(resolve, reject) {
     const reader = new FileReader();
@@ -391,15 +425,15 @@ async function resizeAndEncode(file) {
     reader.readAsDataURL(file);
   });
   const canvas = document.createElement('canvas');
-  const maxW = 400; // ✅ ลดจาก 800 เหลือ 400
+  const maxW = 400;
   const scale = img.width > maxW ? maxW / img.width : 1;
   canvas.width  = Math.round(img.width  * scale);
   canvas.height = Math.round(img.height * scale);
   canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL('image/jpeg', 0.5).split(',')[1]; // ✅ ลด quality จาก 0.65 เหลือ 0.5
-}toDataURL('image/jpeg', 0.65).split(',')[1];
+  return canvas.toDataURL('image/jpeg', 0.5).split(',')[1];
 }
 
+/* ─── ตรวจสอบว่า submit ได้หรือยัง ─── */
 function checkCanSubmit() {
   const req = ['displayName', 'phone', 'bankName', 'bankAccountNo', 'bankAccountName'];
   const allFilled = req.every(function(id) {
@@ -414,7 +448,8 @@ document.querySelectorAll('input,select').forEach(function(el) {
   el.addEventListener('change', checkCanSubmit);
 });
 
-document.getElementById('btnSubmit').onclick = async function() {
+/* ─── Submit ─── */
+document.getElementById('btnSubmit').addEventListener('click', async function() {
   if (!userId) {
     showStatus('❌ LINE User ไม่พร้อม กรุณาเปิดใหม่จาก LINE', 'error');
     return;
@@ -465,7 +500,7 @@ document.getElementById('btnSubmit').onclick = async function() {
     showStatus('❌ ' + (err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ'), 'error');
     document.getElementById('btnSubmit').disabled = false;
   }
-};
+});
 
 function showStatus(text, level) {
   const el = document.getElementById('status');
