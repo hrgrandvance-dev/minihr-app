@@ -147,10 +147,14 @@
   }
 
   /*
-    [FIX] ใช้ <button> ธรรมดา + JS .click() บน input ที่ซ่อนอยู่
-    วิธีนี้ทำงานได้ใน LINE LIFF WebView ทุกเวอร์ชัน
-    ไม่ใช้ <label> ครอบ <input> เพราะ LIFF บางเวอร์ชันบล็อก event chain
+    [REAL FIX] wrapper ครอบปุ่ม + input ลอยทับ
   */
+  .btn-camera-wrap {
+    position: relative;
+    width: 100%;
+  }
+
+  /* ปุ่มที่เห็น — pointer-events:none เพราะ input ลอยทับรับ touch แทน */
   .btn-camera {
     background: #06C755;
     color: #fff;
@@ -163,6 +167,7 @@
     width: 100%;
     display: block;
     text-align: center;
+    pointer-events: none;
   }
 
   .btn-camera:active {
@@ -170,16 +175,19 @@
   }
 
   /*
-    [FIX] ซ่อน input โดยไม่ใช้ display:none (บาง WebView ไม่เปิด file picker)
-    ใช้ position:absolute + opacity:0 + pointer-events:none แทน
+    [REAL FIX] input ลอยทับปุ่มเต็มพื้นที่ opacity:0
+    ไม่มี pointer-events:none — user แตะที่ input โดยตรง
+    LIFF จึงถือว่าเป็น direct user gesture ไม่บล็อก file picker
+    capture="camera" + accept="image/*" = บังคับกล้องเท่านั้น ทั้ง iOS และ Android
   */
-  .hidden-file-input {
+  .overlay-camera-input {
     position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
+    inset: 0;
+    width: 100%;
+    height: 100%;
     opacity: 0;
-    pointer-events: none;
+    cursor: pointer;
+    font-size: 0;
   }
 
   .btn-submit {
@@ -289,25 +297,22 @@
 
 <div class="camera-section">
   <!--
-    [FIX] แยก input และ button ออกจากกัน
-    - input ซ่อนด้วย .hidden-file-input (ไม่ใช้ display:none)
-    - button เรียก input.click() ผ่าน JS โดยตรง
-    - capture="user" บังคับเปิดกล้องเท่านั้น (ไม่มี accept="image/*" ร่วม
-      เพราะบาง Android WebView จะ override capture เป็นแกลเลอรีแทน)
+    [REAL FIX] input ลอยทับปุ่มเต็มพื้นที่ด้วย opacity:0 ไม่มี pointer-events:none
+    user แตะที่ input โดยตรง = LIFF ถือว่าเป็น direct gesture ไม่บล็อก
+    accept="image/*" capture="camera" = บังคับเปิดกล้องเท่านั้น ทั้ง iOS และ Android
   -->
-  <input
-    type="file"
-    id="fileInput"
-    capture="user"
-    class="hidden-file-input"
-  >
-  <button
-    type="button"
-    class="btn-camera"
-    onclick="document.getElementById('fileInput').click()"
-  >
-    📸 ถ่ายรูปสด (กล้องเท่านั้น)
-  </button>
+  <div class="btn-camera-wrap">
+    <button type="button" class="btn-camera">
+      📸 ถ่ายรูปสด (กล้องเท่านั้น)
+    </button>
+    <input
+      type="file"
+      id="fileInput"
+      accept="image/*"
+      capture="camera"
+      class="overlay-camera-input"
+    >
+  </div>
 
   <img id="preview" class="preview" alt="preview">
 </div>
