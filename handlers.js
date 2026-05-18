@@ -956,7 +956,7 @@ function checkin(payload) {
     selfieUrl = uploadImage(
       selfieBase64,
       'chk_' + emp.employee_id + '_' + today + '_' + slot + '.jpg',
-      'daily-photos'
+      'daily-photos/' + today
     );
   } catch (err) {
     logError('checkin:upload', err.message, { lineUserId, slot });

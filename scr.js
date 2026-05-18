@@ -335,7 +335,12 @@ function uploadImage(base64, filename, subfolder) {
   const folderId = getProp('DRIVE_FOLDER_ID');
   const rootFolder = DriveApp.getFolderById(folderId);
   let targetFolder = rootFolder;
-  if (subfolder) targetFolder = getOrCreateSubfolder(rootFolder, subfolder);
+  if (subfolder) {
+    const parts = subfolder.split('/');
+    parts.forEach(function(part) {
+      if (part) targetFolder = getOrCreateSubfolder(targetFolder, part);
+    });
+  }
   const blob = Utilities.newBlob(
     Utilities.base64Decode(cleanBase64), 'image/jpeg', filename
   );
@@ -811,8 +816,9 @@ function haversineMeters(lat1, lng1, lat2, lng2) {
 
 function nextEmployeeId() {
   const sheet = getSheet(SHEETS.EMPLOYEES.name);
-  const count = sheet.getLastRow() > 1 ? sheet.getLastRow() - 1 : 0;
-  return 'EMP-' + padLeft(count + 1, 4);
+  const rows = sheet.getLastRow() > 1 ? sheet.getLastRow() - 1 : 0;
+  const nextNum = rows + 4;
+  return 'TH' + padLeft(nextNum, 5);
 }
 
 function nextCheckinId(dateStr) {
