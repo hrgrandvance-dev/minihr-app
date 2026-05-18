@@ -345,19 +345,6 @@ let currentTarget = null; // 'selfie' | 'idcard'
   }
 })();
 
-<<<<<<< HEAD
-/* ─── Bottom Sheet ─── */
-function openSheet(target) {
-  currentTarget = target;
-  document.getElementById('sheetOverlay').classList.add('open');
-}
-
-function closeSheet(e) {
-  // ถ้า click ที่ overlay (ไม่ใช่ sheet ด้านใน) ก็ปิด
-  if (e && e.target !== document.getElementById('sheetOverlay')) return;
-  document.getElementById('sheetOverlay').classList.remove('open');
-}
-=======
 document.getElementById('btnSelfie').onclick = function(e) {
   e.preventDefault();
   const el = document.getElementById('fileSelfie');
@@ -369,7 +356,6 @@ document.getElementById('btnIdCard').onclick = function(e) {
   const el = document.getElementById('fileIdCard');
   if (el) el.click();
 };
->>>>>>> a4bf16e (restore from zip)
 
 /* ─── Sheet buttons → trigger hidden file inputs ─── */
 document.getElementById('btnCamera').addEventListener('click', function() {
@@ -518,4 +504,5 @@ function showStatus(text, level) {
 </script>
 </body>
 </html>
+
 
