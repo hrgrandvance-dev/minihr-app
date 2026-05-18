@@ -3,17 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-
 <title>ลงทะเบียน — Mini HR App</title>
-
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-
 <style>
-  * {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
     font-family: 'Noto Sans Thai', system-ui, sans-serif;
@@ -29,16 +22,8 @@
     border-radius: 16px;
     margin-bottom: 16px;
   }
-
-  .header h1 {
-    font-size: 22px;
-  }
-
-  .header p {
-    opacity: 0.9;
-    font-size: 13px;
-    margin-top: 4px;
-  }
+  .header h1 { font-size: 22px; }
+  .header p  { opacity: .9; font-size: 13px; margin-top: 4px; }
 
   .field {
     background: #fff;
@@ -46,7 +31,6 @@
     border-radius: 10px;
     margin-bottom: 10px;
   }
-
   .field label {
     font-size: 12px;
     color: #777;
@@ -54,16 +38,14 @@
     margin-bottom: 4px;
     line-height: 1.3;
   }
-
   .label-en {
     font-size: 10px;
     color: #AAA;
-    opacity: 0.8;
+    opacity: .8;
     margin-top: 2px;
     font-weight: 400;
-    letter-spacing: 0.3px;
+    letter-spacing: .3px;
   }
-
   .field input,
   .field select {
     width: 100%;
@@ -73,13 +55,10 @@
     font-size: 15px;
     font-family: inherit;
   }
-
   .field input:focus,
-  .field select:focus {
-    border-color: #D4550A;
-    outline: none;
-  }
+  .field select:focus { border-color: #D4550A; outline: none; }
 
+  /* ─── Photo Box ─── */
   .photo-box {
     background: #fff;
     padding: 16px;
@@ -87,16 +66,15 @@
     margin-bottom: 10px;
     text-align: center;
   }
-
-  .photo-box label {
+  .photo-box .photo-label {
     display: block;
     font-size: 12px;
     color: #777;
     margin-bottom: 8px;
     line-height: 1.3;
+    text-align: left;
   }
-
-  .photo-box .btn {
+  .btn-photo {
     background: #06C755;
     color: #fff;
     border: none;
@@ -111,16 +89,8 @@
     align-items: center;
     gap: 2px;
   }
-
-  .btn-text {
-    display: block;
-  }
-
-  .btn-en {
-    font-size: 10px;
-    opacity: 0.75;
-    font-weight: 400;
-  }
+  .btn-photo:active { opacity: .85; }
+  .btn-en { font-size: 10px; opacity: .75; font-weight: 400; }
 
   .photo-box .preview {
     max-width: 200px;
@@ -128,7 +98,6 @@
     border-radius: 8px;
     display: none;
   }
-
   .photo-status {
     font-size: 11px;
     margin-top: 6px;
@@ -136,17 +105,78 @@
     border-radius: 4px;
     display: inline-block;
   }
+  .photo-status.missing { background: #FFF0F0; color: #B23A3A; }
+  .photo-status.ok      { background: #F0FFF4; color: #1F7A1F; }
 
-  .photo-status.missing {
-    background: #FFF0F0;
+  /* ─── Bottom Sheet ─── */
+  .sheet-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.45);
+    z-index: 900;
+    align-items: flex-end;
+  }
+  .sheet-overlay.open { display: flex; }
+
+  .sheet {
+    background: #fff;
+    width: 100%;
+    border-radius: 20px 20px 0 0;
+    padding: 16px 16px 32px;
+    animation: slideUp .25s ease;
+  }
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+
+  .sheet-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #555;
+    text-align: center;
+    margin-bottom: 14px;
+  }
+
+  .sheet-btn {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 14px 16px;
+    border: none;
+    background: #F7F7F7;
+    border-radius: 12px;
+    font-size: 16px;
+    font-family: inherit;
+    cursor: pointer;
+    margin-bottom: 10px;
+    text-align: left;
+  }
+  .sheet-btn:active { background: #EEE; }
+  .sheet-btn .icon  { font-size: 22px; }
+
+  .sheet-cancel {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    background: none;
     color: #B23A3A;
+    font-size: 15px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    border-radius: 12px;
+    margin-top: 4px;
   }
+  .sheet-cancel:active { background: #FFF0F0; }
 
-  .photo-status.ok {
-    background: #F0FFF4;
-    color: #1F7A1F;
-  }
+  /* hidden file inputs */
+  #inputCamera,
+  #inputGallery { display: none; }
 
+  /* ─── Submit ─── */
   .btn-submit {
     background: #06C755;
     color: #fff;
@@ -159,11 +189,7 @@
     margin-top: 12px;
     cursor: pointer;
   }
-
-  .btn-submit:disabled {
-    background: #AAA;
-    cursor: not-allowed;
-  }
+  .btn-submit:disabled { background: #AAA; cursor: not-allowed; }
 
   #status {
     margin-top: 14px;
@@ -172,28 +198,12 @@
     text-align: center;
     display: none;
   }
-
-  #status.show {
-    display: block;
-  }
-
-  #status.success {
-    background: #1F7A1F;
-    color: #fff;
-  }
-
-  #status.error {
-    background: #B23A3A;
-    color: #fff;
-  }
-
-  #status.loading {
-    background: #F2A640;
-    color: #fff;
-  }
+  #status.show    { display: block; }
+  #status.success { background: #1F7A1F; color: #fff; }
+  #status.error   { background: #B23A3A; color: #fff; }
+  #status.loading { background: #F2A640; color: #fff; }
 </style>
 </head>
-
 <body>
 
 <div class="header">
@@ -201,57 +211,32 @@
   <p>
     กรอกข้อมูลครั้งเดียวจบ
     <br>
-    <span style="font-size:11px;opacity:0.75;">
-      Employee Registration
-    </span>
+    <span style="font-size:11px;opacity:0.75;">Employee Registration</span>
   </p>
 </div>
 
 <div class="field">
-  <label>
-    ชื่อ-นามสกุล *
-    <div class="label-en">Full Name</div>
-  </label>
+  <label>ชื่อ-นามสกุล * <div class="label-en">Full Name</div></label>
   <input id="displayName" placeholder="สมชาย ใจดี">
 </div>
-
 <div class="field">
-  <label>
-    เบอร์โทร *
-    <div class="label-en">Phone Number</div>
-  </label>
+  <label>เบอร์โทร * <div class="label-en">Phone Number</div></label>
   <input id="phone" type="tel" placeholder="0812345678">
 </div>
-
 <div class="field">
-  <label>
-    อีเมล
-    <div class="label-en">Email</div>
-  </label>
+  <label>อีเมล <div class="label-en">Email</div></label>
   <input id="email" type="email">
 </div>
-
 <div class="field">
-  <label>
-    แผนก
-    <div class="label-en">Department</div>
-  </label>
+  <label>แผนก <div class="label-en">Department</div></label>
   <input id="department" placeholder="Engineering">
 </div>
-
 <div class="field">
-  <label>
-    ตำแหน่ง
-    <div class="label-en">Position</div>
-  </label>
+  <label>ตำแหน่ง <div class="label-en">Position</div></label>
   <input id="position" placeholder="Developer">
 </div>
-
 <div class="field">
-  <label>
-    ธนาคาร *
-    <div class="label-en">Bank</div>
-  </label>
+  <label>ธนาคาร * <div class="label-en">Bank</div></label>
   <select id="bankName">
     <option value="">-- เลือก --</option>
     <option>ไทยพาณิชย์ (SCB)</option>
@@ -262,84 +247,117 @@
     <option>ทีเอ็มบีธนชาต (TTB)</option>
   </select>
 </div>
-
 <div class="field">
-  <label>
-    เลขที่บัญชี *
-    <div class="label-en">Account Number</div>
-  </label>
+  <label>เลขที่บัญชี * <div class="label-en">Account Number</div></label>
   <input id="bankAccountNo" placeholder="123-4-56789-0">
 </div>
-
 <div class="field">
-  <label>
-    ชื่อบัญชี *
-    <div class="label-en">Account Name</div>
-  </label>
+  <label>ชื่อบัญชี * <div class="label-en">Account Name</div></label>
   <input id="bankAccountName">
 </div>
 
+<!-- ===== SELFIE ===== -->
 <div class="photo-box">
-  <label>
+  <div class="photo-label">
     📸 ภาพใบหน้า (selfie) *
     <div class="label-en">Selfie Photo (required)</div>
-  </label>
-  <button class="btn" id="btnSelfie" type="button">
-    <span class="btn-text">ถ่ายรูป</span>
-    <span class="btn-en">Take Photo</span>
+  </div>
+  <button type="button" class="btn-photo" onclick="openSheet('selfie')">
+    <span>📷 ถ่ายรูป / เลือกจากคลัง</span>
+    <span class="btn-en">Take Photo or Choose from Gallery</span>
   </button>
-  <input type="file" id="fileSelfie" accept="image/*" style="display:none">
   <img id="previewSelfie" class="preview" alt="">
   <div id="statusSelfie" class="photo-status missing">⚠️ ยังไม่ได้ถ่ายรูป</div>
 </div>
 
+<!-- ===== ID CARD ===== -->
 <div class="photo-box">
-  <label>
+  <div class="photo-label">
     🆔 บัตรประชาชน *
     <div class="label-en">ID Card (required)</div>
-  </label>
-  <button class="btn" id="btnIdCard" type="button">
-    <span class="btn-text">ถ่ายรูป</span>
-    <span class="btn-en">Take Photo</span>
+  </div>
+  <button type="button" class="btn-photo" onclick="openSheet('idcard')">
+    <span>🆔 ถ่ายรูป / เลือกจากคลัง</span>
+    <span class="btn-en">Take Photo or Choose from Gallery</span>
   </button>
-  <input type="file" id="fileIdCard" accept="image/*" style="display:none">
   <img id="previewIdCard" class="preview" alt="">
   <div id="statusIdCard" class="photo-status missing">⚠️ ยังไม่ได้ถ่ายรูป</div>
 </div>
 
-<button class="btn-submit" id="btnSubmit" disabled>
-  ลงทะเบียน
-</button>
-
+<button class="btn-submit" id="btnSubmit" disabled>ลงทะเบียน</button>
 <div id="status"></div>
 
-<script>
+<!-- ===== BOTTOM SHEET ===== -->
+<div class="sheet-overlay" id="sheetOverlay" onclick="closeSheet(event)">
+  <div class="sheet">
+    <div class="sheet-title">เลือกวิธีเพิ่มรูปภาพ / Choose Photo Source</div>
 
+    <!-- ถ่ายด้วยกล้อง: capture="environment" -->
+    <button type="button" class="sheet-btn" id="btnCamera">
+      <span class="icon">📷</span>
+      <div>
+        <div style="font-weight:700;">ถ่ายรูปด้วยกล้อง</div>
+        <div style="font-size:11px;color:#888;margin-top:2px;">Take Photo with Camera</div>
+      </div>
+    </button>
+
+    <!-- เลือกจากแกลเลอรี: ไม่มี capture -->
+    <button type="button" class="sheet-btn" id="btnGallery">
+      <span class="icon">🖼️</span>
+      <div>
+        <div style="font-weight:700;">เลือกจากคลังรูปภาพ</div>
+        <div style="font-size:11px;color:#888;margin-top:2px;">Choose from Gallery</div>
+      </div>
+    </button>
+
+    <button type="button" class="sheet-cancel" onclick="closeSheet()">ยกเลิก / Cancel</button>
+  </div>
+</div>
+
+<!--
+  แยก input 2 ตัว:
+  - inputCamera  → capture="environment"  (บังคับกล้อง)
+  - inputGallery → ไม่มี capture          (เลือกจากแกลเลอรี)
+  ทั้งคู่ hidden ไว้ แล้ว .click() จาก sheet button (same tick = direct gesture)
+-->
+<input type="file" id="inputCamera"  accept="image/*" capture="environment">
+<input type="file" id="inputGallery" accept="image/*">
+
+<script>
 const LIFF_ID = '2010077723-E2aMyxKF';
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxBkocmZN1yPzozv74oJAq3-qbKky0-KM9a1ZTUrajg6Qh5eaJIikrB4vJcttXr_UWS/exec';
 
-let userId = null;
+let userId      = null;
 let selfieBase64 = null;
 let idCardBase64 = null;
+let currentTarget = null; // 'selfie' | 'idcard'
 
+/* ─── LIFF init ─── */
 (async function init() {
   try {
     await liff.init({ liffId: LIFF_ID, withLoginOnExternalBrowser: true });
-
-    if (!liff.isLoggedIn()) {
-      liff.login();
-      return;
-    }
-
+    if (!liff.isLoggedIn()) { liff.login(); return; }
     const profile = await liff.getProfile();
     userId = profile.userId;
     checkCanSubmit();
-
   } catch (err) {
     showStatus('❌ LIFF ERROR: ' + err.message, 'error');
   }
 })();
 
+<<<<<<< HEAD
+/* ─── Bottom Sheet ─── */
+function openSheet(target) {
+  currentTarget = target;
+  document.getElementById('sheetOverlay').classList.add('open');
+}
+
+function closeSheet(e) {
+  // ถ้า click ที่ overlay (ไม่ใช่ sheet ด้านใน) ก็ปิด
+  if (e && e.target !== document.getElementById('sheetOverlay')) return;
+  document.getElementById('sheetOverlay').classList.remove('open');
+}
+=======
 document.getElementById('btnSelfie').onclick = function(e) {
   e.preventDefault();
   const el = document.getElementById('fileSelfie');
@@ -351,35 +369,59 @@ document.getElementById('btnIdCard').onclick = function(e) {
   const el = document.getElementById('fileIdCard');
   if (el) el.click();
 };
+>>>>>>> a4bf16e (restore from zip)
 
-document.getElementById('fileSelfie').onchange = async function(e) {
-  if (!e.target.files || e.target.files.length === 0) return;
+/* ─── Sheet buttons → trigger hidden file inputs ─── */
+document.getElementById('btnCamera').addEventListener('click', function() {
+  document.getElementById('sheetOverlay').classList.remove('open');
+  // reset ค่าเก่าก่อน เพื่อให้ change event ยิงได้แม้เลือกรูปเดิม
+  document.getElementById('inputCamera').value = '';
+  document.getElementById('inputCamera').click();
+});
+
+document.getElementById('btnGallery').addEventListener('click', function() {
+  document.getElementById('sheetOverlay').classList.remove('open');
+  document.getElementById('inputGallery').value = '';
+  document.getElementById('inputGallery').click();
+});
+
+/* ─── Handle file picked (Camera) ─── */
+document.getElementById('inputCamera').addEventListener('change', function(e) {
+  handleFile(e.target.files[0]);
+});
+
+/* ─── Handle file picked (Gallery) ─── */
+document.getElementById('inputGallery').addEventListener('change', function(e) {
+  handleFile(e.target.files[0]);
+});
+
+async function handleFile(file) {
+  if (!file) return;
   try {
-    selfieBase64 = await resizeAndEncode(e.target.files[0]);
-    document.getElementById('previewSelfie').src = 'data:image/jpeg;base64,' + selfieBase64;
-    document.getElementById('previewSelfie').style.display = 'block';
-    document.getElementById('statusSelfie').textContent = '✅ ถ่ายรูปแล้ว';
-    document.getElementById('statusSelfie').className = 'photo-status ok';
+    const b64 = await resizeAndEncode(file);
+    if (currentTarget === 'selfie') {
+      selfieBase64 = b64;
+      setPhotoStatus('previewSelfie', 'statusSelfie', b64);
+    } else {
+      idCardBase64 = b64;
+      setPhotoStatus('previewIdCard', 'statusIdCard', b64);
+    }
     checkCanSubmit();
   } catch(err) {
-    showStatus('❌ ไม่สามารถอ่านรูป selfie ได้', 'error');
+    showStatus('❌ ไม่สามารถอ่านรูปภาพได้: ' + err.message, 'error');
   }
-};
+}
 
-document.getElementById('fileIdCard').onchange = async function(e) {
-  if (!e.target.files || e.target.files.length === 0) return;
-  try {
-    idCardBase64 = await resizeAndEncode(e.target.files[0]);
-    document.getElementById('previewIdCard').src = 'data:image/jpeg;base64,' + idCardBase64;
-    document.getElementById('previewIdCard').style.display = 'block';
-    document.getElementById('statusIdCard').textContent = '✅ ถ่ายรูปแล้ว';
-    document.getElementById('statusIdCard').className = 'photo-status ok';
-    checkCanSubmit();
-  } catch(err) {
-    showStatus('❌ ไม่สามารถอ่านรูปบัตรประชาชนได้', 'error');
-  }
-};
+function setPhotoStatus(previewId, statusId, b64) {
+  const img = document.getElementById(previewId);
+  img.src = 'data:image/jpeg;base64,' + b64;
+  img.style.display = 'block';
+  const st = document.getElementById(statusId);
+  st.textContent = '✅ เลือกรูปแล้ว';
+  st.className = 'photo-status ok';
+}
 
+/* ─── Resize + base64 ─── */
 async function resizeAndEncode(file) {
   const img = await new Promise(function(resolve, reject) {
     const reader = new FileReader();
@@ -393,7 +435,7 @@ async function resizeAndEncode(file) {
     reader.readAsDataURL(file);
   });
   const canvas = document.createElement('canvas');
-  const maxW = 400; // ✅ ลดจาก 800 เหลือ 400
+  const maxW = 400;
   const scale = img.width > maxW ? maxW / img.width : 1;
   canvas.width  = Math.round(img.width  * scale);
   canvas.height = Math.round(img.height * scale);
@@ -401,13 +443,14 @@ async function resizeAndEncode(file) {
   return canvas.toDataURL('image/jpeg', 0.5).split(',')[1];
 }
 
+/* ─── Validation ─── */
 function checkCanSubmit() {
-  const req = ['displayName', 'phone', 'bankName', 'bankAccountNo', 'bankAccountName'];
+  const req = ['displayName','phone','bankName','bankAccountNo','bankAccountName'];
   const allFilled = req.every(function(id) {
     return document.getElementById(id).value.trim();
   });
-  const canSubmit = allFilled && !!userId && !!selfieBase64 && !!idCardBase64;
-  document.getElementById('btnSubmit').disabled = !canSubmit;
+  document.getElementById('btnSubmit').disabled =
+    !(allFilled && userId && selfieBase64 && idCardBase64);
 }
 
 document.querySelectorAll('input,select').forEach(function(el) {
@@ -415,7 +458,8 @@ document.querySelectorAll('input,select').forEach(function(el) {
   el.addEventListener('change', checkCanSubmit);
 });
 
-document.getElementById('btnSubmit').onclick = async function() {
+/* ─── Submit ─── */
+document.getElementById('btnSubmit').addEventListener('click', async function() {
   if (!userId) {
     showStatus('❌ LINE User ไม่พร้อม กรุณาเปิดใหม่จาก LINE', 'error');
     return;
@@ -444,12 +488,11 @@ document.getElementById('btnSubmit').onclick = async function() {
   };
 
   try {
-    const res = await fetch(APPS_SCRIPT_URL, {
+    const res  = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify(payload)
     });
-
     const json = await res.json();
 
     if (json.ok) {
@@ -461,20 +504,17 @@ document.getElementById('btnSubmit').onclick = async function() {
       showStatus('❌ ' + (json.message || json.error || 'เกิดข้อผิดพลาด'), 'error');
       document.getElementById('btnSubmit').disabled = false;
     }
-
   } catch(err) {
     showStatus('❌ ' + (err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ'), 'error');
     document.getElementById('btnSubmit').disabled = false;
   }
-};
+});
 
 function showStatus(text, level) {
   const el = document.getElementById('status');
   el.textContent = text;
   el.className = 'show ' + level;
 }
-
 </script>
-
 </body>
 </html>
