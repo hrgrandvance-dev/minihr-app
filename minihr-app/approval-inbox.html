@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>กล่องอนุมัติ — Mini HR App</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans Thai', system-ui, sans-serif; background: #FFF8F0; padding: 16px; }
+  .header {
+    background: linear-gradient(135deg, #1F7A1F, #06C755); color: #fff;
+    padding: 20px; border-radius: 16px; margin-bottom: 16px;
+  }
+  .header h1 { font-size: 22px; }
+  .header-en { font-size: 11px; opacity: 0.75; margin-top: 4px; }
+  .header .count {
+    background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 999px;
+    font-size: 13px; display: inline-block; margin-top: 6px;
+  }
+
+  .item {
+    background: #fff; padding: 14px; border-radius: 12px; margin-bottom: 10px;
+    border-left: 4px solid #F28C28;
+  }
+  .item.ot { border-left-color: #4E2E97; }
+  .item .id { font-size: 12px; color: #999; }
+  .item .name { font-size: 16px; font-weight: 700; margin-top: 4px; }
+  .item .meta { font-size: 13px; color: #555; margin-top: 6px; }
+  .item .reason { font-size: 13px; color: #333; margin-top: 8px;
+    padding: 8px; background: #FFF3E6; border-radius: 6px; }
+
+  .actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 10px; }
+  .actions button {
+    border: none; padding: 10px; border-radius: 6px; font-size: 12px;
+    font-weight: 700; cursor: pointer;
+  }
+  .actions .approve { background: #1F7A1F; color: #fff; }
+  .actions .reject { background: #B23A3A; color: #fff; }
+  .actions .info { background: #F2A640; color: #fff; }
+
+  .empty { text-align: center; padding: 60px 20px; color: #999; }
+  .empty .icon { font-size: 48px; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>📥 กล่องอนุมัติ</h1>
+  <div style="font-size: 11px; opacity: 0.75;">Approval Inbox</div>
+  <div class="count" id="counter">กำลังโหลด...</div>
+</div>
+
+<div id="list"></div>
+
+<script>
+  const LIFF_ID = '2010077723-l5fc1Slw';
+  const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxBkocmZN1yPzozv74oJAq3-qbKky0-KM9a1ZTUrajg6Qh5eaJIikrB4vJcttXr_UWS/exec';
+  let userId = null;
+
+  (async function init() {
+    await liff.init({ liffId: LIFF_ID, withLoginOnExternalBrowser: true });
+    if (!liff.isLoggedIn()) liff.login();
+    const profile = await liff.getProfile();
+    userId = profile.userId;
+    loadInbox();
+  })();
+
+  async function loadInbox() {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'approval_list', lineUserId: userId })
+    });
+    const json = await res.json();
+    if (!json.ok) { alert(json.error); return; }
+    render(json);
+  }
+
+  function render(d) {
+    document.getElementById('counter').textContent = 'รออนุมัติ ' + d.count + ' รายการ';
+    const list = document.getElementById('list');
+    if (d.count === 0) {
+      list.innerHTML = '<div class="empty"><div class="icon">📭</div>ไม่มีรายการรออนุมัติ</div>';
+      return;
+    }
+    let html = '';
+    d.leaves.forEach(function(l) {
+      const level = String(l.status).replace('pending_', '');
+      html += '<div class="item">';
+      html += '<div class="id">' + l.leave_id + ' · ใบลา · ' + level + '</div>';
+      html += '<div class="name">' + l.employee_id + '</div>';
+      html += '<div class="meta">' + thaiType(l.leave_type) + ' · ' + l.total_days + ' วัน · ' +
+              l.start_date + (l.start_date !== l.end_date ? ' - ' + l.end_date : '') + '</div>';
+      html += '<div class="reason">' + l.reason + '</div>';
+      html += renderActions(l.leave_id, level, 'leave');
+      html += '</div>';
+    });
+    d.ot.forEach(function(o) {
+      const level = String(o.status).replace('pending_', '');
+      html += '<div class="item ot">';
+      html += '<div class="id">' + o.ot_id + ' · OT · ' + level + '</div>';
+      html += '<div class="name">' + o.employee_id + '</div>';
+      html += '<div class="meta">' + o.ot_date + ' ' + o.start_time + '-' + o.end_time +
+              ' · ' + o.total_hours + ' ชม.</div>';
+      html += '<div class="reason">' + o.reason + '</div>';
+      html += renderActions(o.ot_id, level, 'ot');
+      html += '</div>';
+    });
+    list.innerHTML = html;
+  }
+
+  function renderActions(id, level, type) {
+    return '<div class="actions">' +
+      '<button class="approve" onclick="act(\'approve\',\''+id+'\',\''+level+'\',\''+type+'\')"><span style="display:block;">✅ อนุมัติ</span><span style="font-size:9px;opacity:0.8;">Approve</span></button>' +
+      '<button class="reject" onclick="act(\'reject\',\''+id+'\',\''+level+'\',\''+type+'\')"><span style="display:block;">❌ ปฏิเสธ</span><span style="font-size:9px;opacity:0.8;">Reject</span></button>' +
+      '<button class="info" onclick="act(\'need_info\',\''+id+'\',\''+level+'\',\''+type+'\')"><span style="display:block;">ℹ️ ขอข้อมูล</span><span style="font-size:9px;opacity:0.8;">More Info</span></button>' +
+      '</div>';
+  }
+
+  async function act(action, id, level, type) {
+    const labels = { approve: 'อนุมัติ', reject: 'ปฏิเสธ', need_info: 'ขอข้อมูลเพิ่ม' };
+    if (!confirm(labels[action] + ' ' + id + ' (' + level + ')?')) return;
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        action: 'approve_item',
+        lineUserId: userId,
+        id: id, level: level, type: type,
+        actionType: action,
+        // Apps Script reads `action` for routing, but processApprovalPostback expects different field
+        // We pass via this mapping in our handler
+      })
+    });
+    const json = await res.json();
+    if (json.ok) { alert('บันทึกแล้ว'); loadInbox(); }
+    else alert('Error: ' + (json.message || json.error));
+  }
+  window.act = act;
+
+  function thaiType(t) {
+    return { sick:'ป่วย', personal:'กิจ', vacation:'พักร้อน', unpaid:'ไม่รับเงิน', emergency:'ฉุกเฉิน' }[t] || t;
+  }
+</script>
+</body>
+</html>
+

@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>ลงเวลา — Mini HR App</title>
+
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans Thai', system-ui, sans-serif;
+    background: #FFF8F0;
+    color: #1A1A1A;
+    padding: 16px;
+    min-height: 100vh;
+  }
+
+  .header {
+    background: linear-gradient(135deg, #D4550A, #F28C28);
+    color: #fff;
+    padding: 20px;
+    border-radius: 16px;
+    margin-bottom: 16px;
+  }
+
+  .header h1 {
+    font-size: 22px;
+  }
+
+  .header-desc {
+    opacity: 0.9;
+    font-size: 14px;
+    margin-top: 4px;
+    line-height: 1.3;
+  }
+
+  .header-en {
+    font-size: 11px;
+    opacity: 0.75;
+    margin-top: 4px;
+  }
+
+  .slot-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .slot-btn {
+    background: #fff;
+    border: 2px solid #E0D0C0;
+    padding: 14px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .slot-btn-text {
+    display: block;
+  }
+
+  .slot-btn-en {
+    font-size: 10px;
+    color: #AAA;
+    margin-top: 3px;
+    opacity: 0.8;
+  }
+
+  .slot-btn.active {
+    background: #D4550A;
+    color: #fff;
+    border-color: #D4550A;
+  }
+
+  .slot-btn.active .slot-btn-en {
+    color: #FFD9B3;
+  }
+
+  .info-box {
+    background: #fff;
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    border-left: 4px solid #F28C28;
+  }
+
+  .info-box .label {
+    font-size: 12px;
+    color: #777;
+    margin-bottom: 4px;
+  }
+
+  .info-box .label-en {
+    font-size: 10px;
+    color: #AAA;
+    opacity: 0.8;
+  }
+
+  .info-box .value {
+    font-size: 15px;
+    font-weight: 600;
+    margin-top: 4px;
+  }
+
+  .info-box.warn {
+    border-color: #B23A3A;
+    background: #FFF0F0;
+  }
+
+  .info-box.ok {
+    border-color: #1F7A1F;
+    background: #F0FFF0;
+  }
+
+  .camera-section {
+    background: #fff;
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+
+  .preview {
+    width: 100%;
+    max-width: 320px;
+    border-radius: 8px;
+    margin-top: 12px;
+    display: none;
+  }
+
+  .btn-camera {
+    background: #06C755;
+    color: #fff;
+    border: none;
+    padding: 14px 24px;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    width: 100%;
+  }
+
+  .btn-submit {
+    background: #D4550A;
+    color: #fff;
+    border: none;
+    padding: 16px;
+    border-radius: 12px;
+    font-size: 17px;
+    font-weight: 700;
+    width: 100%;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+
+  .btn-submit:disabled {
+    background: #AAA;
+    cursor: not-allowed;
+  }
+
+  #status {
+    margin-top: 16px;
+    padding: 14px;
+    border-radius: 10px;
+    font-size: 14px;
+    text-align: center;
+    display: none;
+    white-space: pre-line;
+  }
+
+  #status.show {
+    display: block;
+  }
+
+  #status.success {
+    background: #1F7A1F;
+    color: #fff;
+  }
+
+  #status.error {
+    background: #B23A3A;
+    color: #fff;
+  }
+
+  #status.loading {
+    background: #F2A640;
+    color: #fff;
+  }
+
+  .retry-btn {
+    background: #D4550A;
+    color: #fff;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-top: 8px;
+    font-size: 12px;
+  }
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  <h1>📍 ลงเวลา</h1>
+  <div class="header-desc">
+    เปิดกล้อง · GPS lock · ฝัง watermark อัตโนมัติ
+    <div class="header-en">Camera · GPS · Auto Watermark</div>
+  </div>
+</div>
+
+<div class="slot-selector">
+  <button type="button" class="slot-btn active" data-slot="IN">
+    <span class="slot-btn-text">🌅 เข้างาน</span>
+    <span class="slot-btn-en">Check In</span>
+  </button>
+
+  <button type="button" class="slot-btn" data-slot="LUNCH_OUT">
+    <span class="slot-btn-text">🍽️ พักเที่ยง</span>
+    <span class="slot-btn-en">Lunch Out</span>
+  </button>
+
+  <button type="button" class="slot-btn" data-slot="LUNCH_IN">
+    <span class="slot-btn-text">↩️ กลับจากพัก</span>
+    <span class="slot-btn-en">Lunch In</span>
+  </button>
+
+  <button type="button" class="slot-btn" data-slot="OUT">
+    <span class="slot-btn-text">👋 เลิกงาน</span>
+    <span class="slot-btn-en">Check Out</span>
+  </button>
+</div>
+
+<div class="info-box" id="gpsBox">
+  <div class="label">
+    📡 GPS
+    <div class="label-en">Location</div>
+  </div>
+
+  <div class="value" id="gpsValue">
+    กำลังขอตำแหน่ง...
+  </div>
+</div>
+
+<div class="camera-section">
+  <button type="button" class="btn-camera" id="btnCamera">
+    📸 ถ่ายรูปสด
+  </button>
+
+  <input
+    type="file"
+    id="fileInput"
+    accept="image/*"
+    capture="user"
+    style="display:none"
+  >
+
+  <img id="preview" class="preview" alt="preview">
+</div>
+
+<button class="btn-submit" id="btnSubmit" disabled>
+  ส่งลงเวลา
+</button>
+
+<div id="status"></div>
+
+<script>
+  var LIFF_ID = '2010077723-35YjoRoE';
+  var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxBkocmZN1yPzozv74oJAq3-qbKky0-KM9a1ZTUrajg6Qh5eaJIikrB4vJcttXr_UWS/exec';
+  let currentSlot = 'IN';
+  let gpsCoords = null;
+  let gpsError = null;
+  let imageBase64 = null;
+  let userId = null;
+
+  document.querySelectorAll('.slot-btn').forEach(function(btn) {
+    btn.onclick = function() {
+      document.querySelectorAll('.slot-btn').forEach(function(b) {
+        b.classList.remove('active');
+      });
+      btn.classList.add('active');
+      currentSlot = btn.dataset.slot;
+    };
+  });
+
+  document.getElementById('btnCamera').onclick = async function() {
+    // Force camera capture only - no file upload option
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: 'user' },
+          audio: false 
+        });
+        
+        // Stop stream immediately - we just wanted to check permission
+        stream.getTracks().forEach(track => track.stop());
+        
+        // Now trigger file input with camera capture enforced
+        const fileInput = document.getElementById('fileInput');
+        fileInput.setAttribute('capture', 'user');
+        fileInput.click();
+      } catch (err) {
+        if (err.name === 'NotAllowedError') {
+          showStatus('❌ กรุณาอนุญาติให้ใช้กล้อง', 'error');
+        } else if (err.name === 'NotFoundError') {
+          showStatus('❌ ไม่พบกล้องในอุปกรณ์นี้', 'error');
+        } else {
+          showStatus('❌ เกิดข้อผิดพลาด: ' + err.message, 'error');
+        }
+      }
+    } else {
+      // Fallback for older browsers
+      const fileInput = document.getElementById('fileInput');
+      fileInput.setAttribute('capture', 'user');
+      fileInput.click();
+    }
+  };
+
+  document.getElementById('fileInput').onchange = async function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    await processImage(file);
+  };
+
+  document.getElementById('btnSubmit').onclick = async function() {
+    await submitCheckin();
+  };
+
+  (async function init() {
+    try {
+      if (!LIFF_ID || LIFF_ID === '') {
+        showStatus('❌ ยังไม่ได้ตั้งค่า LIFF_ID ใน Code.gs', 'error');
+        return;
+      }
+      await liff.init({ liffId: LIFF_ID, withLoginOnExternalBrowser: true });
+      if (!liff.isLoggedIn()) {
+        liff.login();
+        return;
+      }
+      const profile = await liff.getProfile();
+      userId = profile.userId;
+      if (!userId) {
+        showStatus('❌ ไม่พบ LINE user id', 'error');
+        return;
+      }
+      requestGPS();
+      checkCanSubmit();
+    } catch (err) {
+      console.error(err);
+      showStatus('❌ LIFF Error: ' + err.message, 'error');
+    }
+  })();
+
+  function requestGPS() {
+    if (!navigator.geolocation) {
+      gpsError = 'unsupported';
+      document.getElementById('gpsValue').innerHTML = '❌ อุปกรณ์ไม่รองรับ GPS';
+      document.getElementById('gpsBox').classList.add('warn');
+      checkCanSubmit();
+      return;
+    }
+
+    document.getElementById('gpsValue').innerHTML = '🔄 กำลังค้นหาตำแหน่ง...';
+
+    navigator.geolocation.getCurrentPosition(
+      function(pos) {
+        gpsCoords = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude
+        };
+        gpsError = null;
+        
+        // Try to get location name using reverse geocoding
+        reverseGeocode(gpsCoords.lat, gpsCoords.lng).then(function(placeName) {
+          const displayText = placeName 
+            ? '✅ ' + placeName + '\n(' + gpsCoords.lat.toFixed(5) + ', ' + gpsCoords.lng.toFixed(5) + ')'
+            : '✅ ' + gpsCoords.lat.toFixed(5) + ', ' + gpsCoords.lng.toFixed(5);
+          document.getElementById('gpsValue').innerHTML = displayText;
+          document.getElementById('gpsBox').classList.remove('warn');
+          document.getElementById('gpsBox').classList.add('ok');
+          checkCanSubmit();
+        }).catch(function(err) {
+          // Fallback to coordinates if reverse geocoding fails
+          document.getElementById('gpsValue').innerHTML = '✅ ' + gpsCoords.lat.toFixed(5) + ', ' + gpsCoords.lng.toFixed(5);
+          document.getElementById('gpsBox').classList.remove('warn');
+          document.getElementById('gpsBox').classList.add('ok');
+          checkCanSubmit();
+        });
+      },
+      function(err) {
+        gpsCoords = null;
+        if (err.code === 1) {
+          gpsError = 'permission_denied';
+        } else if (err.code === 2) {
+          gpsError = 'position_unavailable';
+        } else if (err.code === 3) {
+          gpsError = 'timeout';
+        } else {
+          gpsError = 'unknown';
+        }
+        document.getElementById('gpsValue').innerHTML = '❌ เปิด GPS ไม่สำเร็จ<br><button class="retry-btn" onclick="requestGPS()">ลองใหม่</button>';
+        document.getElementById('gpsBox').classList.add('warn');
+        checkCanSubmit();
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0
+      }
+    );
+  }
+
+  function reverseGeocode(lat, lng) {
+    return fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lng + '&zoom=18&addressdetails=1')
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.address) {
+          const addr = data.address;
+          // Try to build a readable address
+          const parts = [];
+          if (addr.shop) parts.push(addr.shop);
+          if (addr.building) parts.push(addr.building);
+          if (addr.road) parts.push(addr.road);
+          if (addr.suburb) parts.push(addr.suburb);
+          if (addr.city) parts.push(addr.city);
+          
+          if (parts.length > 0) {
+            return parts.slice(0, 3).join(', ');
+          }
+        }
+        return null;
+      })
+      .catch(function(err) {
+        console.error('Reverse geocode error:', err);
+        return null;
+      });
+  }
+
+  async function processImage(file) {
+    const img = await loadImage(file);
+    const canvas = document.createElement('canvas');
+    const maxW = 800;
+
+    if (img.width > maxW) {
+      canvas.width = maxW;
+      canvas.height = Math.round((maxW / img.width) * img.height);
+    } else {
+      canvas.width = img.width;
+      canvas.height = img.height;
+    }
+
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    const barH = Math.max(70, canvas.height * 0.08);
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.fillRect(0, canvas.height - barH, canvas.width, barH);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold ' + Math.floor(barH * 0.28) + 'px sans-serif';
+
+    const now = new Date();
+    const datetime = now.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
+    const gpsTxt = gpsCoords ? gpsCoords.lat.toFixed(5) + ', ' + gpsCoords.lng.toFixed(5) : 'GPS unavailable';
+
+    ctx.fillText('🕐 ' + datetime, 14, canvas.height - barH + barH * 0.4);
+    ctx.fillText('📍 ' + gpsTxt, 14, canvas.height - barH + barH * 0.75);
+
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.65);
+    imageBase64 = dataUrl.split(',')[1];
+
+    const preview = document.getElementById('preview');
+    preview.src = dataUrl;
+    preview.style.display = 'block';
+
+    checkCanSubmit();
+  }
+
+  function loadImage(file) {
+    return new Promise(function(resolve, reject) {
+      const reader = new FileReader();
+      reader.onload = function() {
+        const img = new Image();
+        img.onload = function() {
+          resolve(img);
+        };
+        img.onerror = reject;
+        img.src = reader.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function checkCanSubmit() {
+    const canSubmit = !!imageBase64 && !!userId;
+    document.getElementById('btnSubmit').disabled = !canSubmit;
+  }
+
+  async function submitCheckin() {
+    if (!userId) {
+      showStatus('❌ missing_line_user_id', 'error');
+      return;
+    }
+    if (!imageBase64) {
+      showStatus('❌ กรุณาถ่ายรูปก่อน', 'error');
+      return;
+    }
+
+    showStatus('⏳ กำลังส่งข้อมูล...', 'loading');
+    document.getElementById('btnSubmit').disabled = true;
+
+    const payload = {
+      action: 'checkin',
+      lineUserId: userId,
+      lat: gpsCoords ? gpsCoords.lat : 0,
+      lng: gpsCoords ? gpsCoords.lng : 0,
+      selfieBase64: imageBase64,
+      slot: currentSlot
+    };
+
+    try {
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain'
+        },
+        body: JSON.stringify(payload)
+      });
+      const json = await res.json();
+
+      if (json.ok) {
+        showStatus('✅ ลงเวลาเรียบร้อย', 'success');
+        setTimeout(function() {
+          if (window.liff) {
+            liff.closeWindow();
+          }
+        }, 2500);
+      } else {
+        showStatus('❌ ' + (json.message || json.error || 'เกิดข้อผิดพลาด'), 'error');
+        checkCanSubmit();
+      }
+    } catch (err) {
+      console.error(err);
+      showStatus('❌ ' + err.message, 'error');
+      checkCanSubmit();
+    }
+  }
+
+  function showStatus(text, level) {
+    const el = document.getElementById('status');
+    el.textContent = text;
+    el.className = 'show ' + level;
+  }
+</script>
+</body>
+</html>
+

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>ตอบกลับ — Mini HR App</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Noto Sans Thai', system-ui, sans-serif;
+    background: #FFF8F0; padding: 16px;
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  }
+  .card {
+    background: #fff; padding: 30px 24px; border-radius: 18px;
+    text-align: center; max-width: 360px; width: 100%;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+  }
+  .icon { font-size: 48px; margin-bottom: 12px; }
+  .title { font-size: 20px; font-weight: 800; color: #1A1A1A; margin-bottom: 8px; }
+  .title-en { font-size: 11px; color: #AAA; opacity: 0.8; margin-top: 4px; margin-bottom: 12px; }
+  .text { font-size: 14px; color: #555; line-height: 1.5; }
+  .btn {
+    background: #D4550A; color: #fff; border: none; padding: 12px 24px;
+    border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 16px;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon" id="icon">⏳</div>
+  <div class="title" id="title">กำลังประมวลผล...</div>
+  <div class="title-en" id="titleEn">Processing...</div>
+  <div class="text" id="text">โปรดรอสักครู่</div>
+  <button class="btn" id="btnClose" style="display:none;" onclick="liff.closeWindow()">
+    <span class="btn-text">ปิด</span>
+    <span class="btn-en">Close</span>
+  </button>
+</div>
+
+<script>
+  const LIFF_ID = '2010077723-06RCvau0';
+
+  (async function() {
+    try {
+      await liff.init({ liffId: LIFF_ID, withLoginOnExternalBrowser: true });
+    } catch (e) {}
+
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get('status') || 'ok';
+    const message = params.get('message') || 'เรียบร้อย';
+
+    if (status === 'ok' || status === 'success') {
+      document.getElementById('icon').textContent = '✅';
+      document.getElementById('title').textContent = 'สำเร็จ';
+      document.getElementById('titleEn').textContent = 'Success';
+      document.getElementById('text').textContent = message;
+    } else if (status === 'error') {
+      document.getElementById('icon').textContent = '❌';
+      document.getElementById('title').textContent = 'ผิดพลาด';
+      document.getElementById('titleEn').textContent = 'Error';
+      document.getElementById('text').textContent = message;
+    } else if (status === 'pending') {
+      document.getElementById('icon').textContent = '⏳';
+      document.getElementById('title').textContent = 'รอประมวลผล';
+      document.getElementById('titleEn').textContent = 'Processing';
+      document.getElementById('text').textContent = message;
+    } else {
+      document.getElementById('icon').textContent = 'ℹ️';
+      document.getElementById('title').textContent = status;
+      document.getElementById('titleEn').textContent = status;
+      document.getElementById('text').textContent = message;
+    }
+
+    document.getElementById('btnClose').style.display = 'inline-block';
+
+    if (status === 'ok' || status === 'success') {
+      setTimeout(function() {
+        try { liff.closeWindow(); } catch (e) {}
+      }, 3000);
+    }
+  })();
+</script>
+</body>
+</html>
+

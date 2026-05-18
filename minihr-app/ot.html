@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>ขอ OT — Mini HR App</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans Thai', system-ui, sans-serif; background: #FFF8F0; padding: 16px; }
+  .header {
+    background: linear-gradient(135deg, #4E2E97, #7647C7); color: #fff;
+    padding: 20px; border-radius: 16px; margin-bottom: 16px;
+  }
+  .header h1 { font-size: 22px; }
+  .header-en { font-size: 11px; opacity: 0.75; margin-top: 4px; }
+  .header p { opacity: 0.9; font-size: 13px; margin-top: 4px; }
+  .field { background: #fff; padding: 14px; border-radius: 10px; margin-bottom: 10px; }
+  .field label { font-size: 12px; color: #777; display: block; margin-bottom: 6px; }
+  .label-en { font-size: 10px; color: #AAA; opacity: 0.8; margin-top: 2px; }
+  .field input, .field textarea {
+    width: 100%; border: 1px solid #DDD; padding: 10px; border-radius: 6px; font-family: inherit; font-size: 14px;
+  }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .btn-submit {
+    background: #D4550A; color: #fff; border: none; padding: 16px;
+    border-radius: 12px; font-size: 17px; font-weight: 700; width: 100%; margin-top: 8px;
+  }
+  .btn-submit:disabled { background: #AAA; }
+  .summary {
+    background: #FFF3E6; border: 2px dashed #F28C28; padding: 14px;
+    border-radius: 10px; margin-bottom: 10px; text-align: center;
+  }
+  .summary .hours { font-size: 32px; font-weight: 900; color: #D4550A; }
+  .summary .lab { font-size: 12px; color: #777; }
+  #status { margin-top: 12px; padding: 12px; border-radius: 8px; text-align: center; display: none; }
+  #status.show { display: block; }
+  #status.success { background: #1F7A1F; color: #fff; }
+  #status.error { background: #B23A3A; color: #fff; }
+  #status.loading { background: #F2A640; color: #fff; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>⏱️ ขอ OT</h1>
+  <p>บันทึกชั่วโมงทำงานนอกเวลา<div class="header-en">Request Overtime</div></p>
+</div>
+
+<div class="field"><label>วันที่ทำ OT *<div class="label-en">OT Date</div></label><input type="date" id="otDate"></div>
+
+<div class="field">
+  <label>ช่วงเวลา *<div class="label-en">Time Range</div></label>
+  <div class="row">
+    <input type="time" id="startTime" placeholder="เริ่ม">
+    <input type="time" id="endTime" placeholder="สิ้นสุด">
+  </div>
+</div>
+
+<div class="summary">
+  <div class="lab">รวม<div style="font-size: 9px; color: #777; margin-top: 2px; opacity: 0.8;">Total</div></div>
+  <div class="hours" id="totalHours">0.0</div>
+  <div class="lab">ชั่วโมง<div style="font-size: 9px; color: #777; margin-top: 2px; opacity: 0.8;">Hours</div></div>
+</div>
+
+<div class="field"><label>เหตุผล *<div class="label-en">Reason</div></label><textarea id="reason" rows="3" placeholder="เช่น ปิดยอดสิ้นเดือน"></textarea></div>
+
+<button class="btn-submit" id="btnSubmit" disabled><span class="btn-text">ส่งคำขอ</span><span class="btn-en">Submit Request</span></button>
+<div id="status"></div>
+
+<script>
+const LIFF_ID = '2010077723-OWBKOAPQ';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxBkocmZN1yPzozv74oJAq3-qbKky0-KM9a1ZTUrajg6Qh5eaJIikrB4vJcttXr_UWS/exec';
+  let userId = null;
+
+  (async function init() {
+    await liff.init({ liffId: LIFF_ID, withLoginOnExternalBrowser: true });
+    if (!liff.isLoggedIn()) liff.login();
+    const profile = await liff.getProfile();
+    userId = profile.userId;
+    // Default to today
+    const today = new Date().toISOString().substring(0, 10);
+    document.getElementById('otDate').value = today;
+  })();
+
+  function recalc() {
+    const s = document.getElementById('startTime').value;
+    const e = document.getElementById('endTime').value;
+    if (!s || !e) { document.getElementById('totalHours').textContent = '0.0'; return; }
+    const [sh, sm] = s.split(':').map(Number);
+    const [eh, em] = e.split(':').map(Number);
+    const diff = (eh * 60 + em) - (sh * 60 + sm);
+    const hours = Math.max(0, diff / 60);
+    document.getElementById('totalHours').textContent = hours.toFixed(1);
+    checkCan();
+  }
+
+  function checkCan() {
+    const ok = document.getElementById('otDate').value
+      && document.getElementById('startTime').value
+      && document.getElementById('endTime').value
+      && document.getElementById('reason').value.trim()
+      && parseFloat(document.getElementById('totalHours').textContent) > 0;
+    document.getElementById('btnSubmit').disabled = !ok;
+  }
+
+  document.querySelectorAll('input, textarea').forEach(function(el) {
+    el.oninput = recalc;
+  });
+
+  document.getElementById('btnSubmit').onclick = async function() {
+    showStatus('กำลังส่ง...', 'loading');
+    document.getElementById('btnSubmit').disabled = true;
+    const payload = {
+      action: 'ot',
+      lineUserId: userId,
+      otDate: document.getElementById('otDate').value,
+      startTime: document.getElementById('startTime').value,
+      endTime: document.getElementById('endTime').value,
+      reason: document.getElementById('reason').value
+    };
+    try {
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST', headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload)
+      });
+      const json = await res.json();
+      if (json.ok) {
+        showStatus('✅ ส่งคำขอ OT เรียบร้อย ' + json.otId, 'success');
+        setTimeout(function() { liff.closeWindow(); }, 2500);
+      } else {
+        showStatus('❌ ' + (json.message || json.error), 'error');
+        document.getElementById('btnSubmit').disabled = false;
+      }
+    } catch (err) {
+      showStatus('❌ ' + err.message, 'error');
+      document.getElementById('btnSubmit').disabled = false;
+    }
+  };
+
+  function showStatus(t, l) {
+    const el = document.getElementById('status');
+    el.textContent = t; el.className = 'show ' + l;
+  }
+</script>
+</body>
+</html>
+
