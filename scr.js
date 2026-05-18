@@ -142,6 +142,7 @@ const DEFAULT_CONFIG = {
   ot_request_lead_min: 30,
   enable_approval_L2: true,
   enable_approval_L3: true,
+working_saturday_pattern: 'every',
 };
 
 function getProp(key) {
@@ -339,14 +340,8 @@ function uploadImage(base64, filename, subfolder) {
     Utilities.base64Decode(cleanBase64), 'image/jpeg', filename
   );
   const file = targetFolder.createFile(blob);
-  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  // file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
   return 'https://drive.google.com/uc?id=' + file.getId();
-}
-
-function getOrCreateSubfolder(parent, name) {
-  const folders = parent.getFoldersByName(name);
-  if (folders.hasNext()) return folders.next();
-  return parent.createFolder(name);
 }
 
 function deleteImage(url) {
@@ -541,6 +536,7 @@ const ACTION_HANDLERS = {
   'hr_pay_items':   function(p) { return hrGetPayItems(p); },
   'hr_add_payitem': function(p) { return hrAddPayItem(p); },
   'hr_holidays':    function(p) { return hrGetHolidays(p); },
+'hr_get_quota':   function(p) { return hrGetLeaveQuota(p); },
   'hr_set_quota':   function(p) { return hrSetLeaveQuota(p); },
   'hr_report':      function(p) { return hrGetReport(p); },
   'close_period':   function(p) { return closePeriod(p); },
@@ -891,9 +887,29 @@ function isHoliday(dateStr) {
   return { isHoliday: false };
 }
 
+function isWorkingSaturday(dateStr) {
+  const config = getConfig();
+  const pattern = config.working_saturday_pattern || 'none';
+  if (pattern === 'none') return false;
+  if (pattern === 'every') return true;
+
+  // odd/even — นับลำดับเสาร์ในเดือนนั้น
+  const d = new Date(dateStr);
+  const year = d.getFullYear();
+  const month = d.getMonth();
+  let satCount = 0;
+  for (let day = 1; day <= d.getDate(); day++) {
+    if (new Date(year, month, day).getDay() === 6) satCount++;
+  }
+  if (pattern === 'odd')  return satCount % 2 === 1;
+  if (pattern === 'even') return satCount % 2 === 0;
+  return false;
+}
+
 function isWorkingDay(dateStr) {
   const dow = new Date(dateStr).getDay();
-  if (dow === 0 || dow === 6) return false;
+  if (dow === 0) return false; // อาทิตย์ หยุดเสมอ
+  if (dow === 6) return isWorkingSaturday(dateStr); // เสาร์ — เช็ค pattern
   return !isHoliday(dateStr).isHoliday;
 }
 

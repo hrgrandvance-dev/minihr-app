@@ -340,7 +340,39 @@
       alert('Error: ' + r.error);
     }
   };
+// ==================== QUOTA ====================
+document.getElementById('quotaYear').onchange = loadQuota;
 
+async function loadQuota() {
+  const year = document.getElementById('quotaYear').value;
+  if (!year) return;
+  const el = document.getElementById('quotaList');
+  el.className = 'loading-state';
+  el.textContent = 'กำลังโหลด...';
+  const r = await api('hr_get_quota', { year: Number(year) });
+  if (!r.ok) { el.textContent = 'Error: ' + r.error; return; }
+  if (r.quotas.length === 0) { el.className = ''; el.textContent = 'ยังไม่มีพนักงาน'; return; }
+  el.className = '';
+  el.innerHTML = r.quotas.map(function(q) {
+    return '<div class="card" style="margin-bottom:10px">' +
+      '<div class="row"><span class="lab"><b>' + q.display_name + '</b></span><span>' + q.employee_id + '</span></div>' +
+      '<div class="row"><span class="lab">ลาป่วย</span><input type="number" min="0" style="width:60px" data-emp="' + q.employee_id + '" data-type="sick_quota" value="' + q.sick_quota + '"></div>' +
+      '<div class="row"><span class="lab">ลากิจ</span><input type="number" min="0" style="width:60px" data-emp="' + q.employee_id + '" data-type="personal_quota" value="' + q.personal_quota + '"></div>' +
+      '<div class="row"><span class="lab">ลาพักร้อน</span><input type="number" min="0" style="width:60px" data-emp="' + q.employee_id + '" data-type="vacation_quota" value="' + q.vacation_quota + '"></div>' +
+      '<button onclick="saveQuota(\'' + q.employee_id + '\')" style="margin-top:8px;padding:6px 14px;background:#D4550A;color:#fff;border:none;border-radius:6px;cursor:pointer">บันทึก</button>' +
+      '</div>';
+  }).join('');
+}
+
+async function saveQuota(empId) {
+  const year = document.getElementById('quotaYear').value;
+  const inputs = document.querySelectorAll('[data-emp="' + empId + '"]');
+  const updates = {};
+  inputs.forEach(function(inp) { updates[inp.dataset.type] = Number(inp.value); });
+  const r = await api('hr_set_quota', { employeeId: empId, year: Number(year), updates: updates });
+  if (r.ok) alert('บันทึกโควต้าสำเร็จ');
+  else alert('Error: ' + r.error);
+}
   // ==================== Stubs ====================
   document.getElementById('btnAddEmp').onclick = function() {
     alert('การเพิ่มพนักงานใหม่ ให้ใช้หน้า "ลงทะเบียน" ของพนักงานคนนั้นเอง\n\nหลังจากลงทะเบียน แล้วเข้ามาที่นี่เพื่อตั้ง approver และค่าจ้าง');

@@ -1,3 +1,8 @@
+function getOrCreateSubfolder(parent, name) {
+  const folders = parent.getFoldersByName(name);
+  if (folders.hasNext()) return folders.next();
+  return parent.createFolder(name);
+}
   /**
  * ============================================================
  * Register Handler
@@ -36,22 +41,28 @@ function register(payload) {
   }
 
   // === Upload images ===
-  let selfieUrl, idCardUrl;
-  try {
-    selfieUrl = uploadImage(
-      selfieBase64,
-      'selfie_' + lineUserId + '_' + Date.now() + '.jpg',
-      'selfies'
-    );
-    idCardUrl = uploadImage(
-      idCardBase64,
-      'id_' + lineUserId + '_' + Date.now() + '.jpg',
-      'id-cards'
-    );
-  } catch (err) {
-    logError('register:upload', err.message, { lineUserId });
-    return { ok: false, error: 'upload_failed', message: err.message };
-  }
+let selfieUrl, idCardUrl;
+try {
+  selfieUrl = uploadImage(
+    selfieBase64,
+    'selfie_' + lineUserId + '_' + Date.now() + '.jpg',
+    'selfies'
+  );
+} catch (err) {
+  logError('register:upload:selfie', err.message, { lineUserId });
+  return { ok: false, error: 'upload_failed', message: err.message };
+}
+
+try {
+  idCardUrl = uploadImage(
+    idCardBase64,
+    'id_' + lineUserId + '_' + Date.now() + '.jpg',
+    'id-cards'
+  );
+} catch (err) {
+  logError('register:upload:idcard', err.message, { lineUserId });
+  return { ok: false, error: 'upload_failed', message: err.message };
+}
 
   // === Insert row ===
   const employeeId = nextEmployeeId();
@@ -681,15 +692,25 @@ function hrGetHolidays(payload) {
   return { ok: true, holidays: holidays };
 }
 
-function hrSetLeaveQuota(payload) {
+function hrGetLeaveQuota(payload) {
   if (!isOwner(payload.lineUserId)) return { ok: false, error: 'forbidden' };
-  const employeeId = payload.employeeId;
-  const year = payload.year;
-  const updates = payload.updates;
-  const ok = updateRow(SHEETS.LEAVE_QUOTA.name, function(r) {
-    return r.employee_id === employeeId && Number(r.year) === Number(year);
-  }, updates);
-  return { ok: ok };
+  const year = Number(payload.year);
+  const employees = getActiveEmployees();
+  const quotas = employees.map(function(emp) {
+    const q = getLeaveQuota(emp.employee_id, year) || {
+      sick_quota: 0, sick_used: 0,
+      personal_quota: 0, personal_used: 0,
+      vacation_quota: 0, vacation_used: 0
+    };
+    return {
+      employee_id: emp.employee_id,
+      display_name: emp.display_name,
+      sick_quota: q.sick_quota,
+      personal_quota: q.personal_quota,
+      vacation_quota: q.vacation_quota
+    };
+  });
+  return { ok: true, quotas: quotas };
 }
 
 function hrGetReport(payload) {
@@ -1261,4 +1282,20 @@ function submitOT(payload) {
 
   logUserAction('submitOT', lineUserId, 'success', { otId, totalHours });
   return { ok: true, otId: otId };
+}
+function hrGetQuota(payload) {
+  if (!isOwner(payload.lineUserId)) return { ok: false, error: 'forbidden' };
+  const year = payload.year;
+  const employees = getActiveEmployees();
+  const quotas = employees.map(function(emp) {
+    const q = getLeaveQuota(emp.employee_id, year) || {};
+    return {
+      employee_id: emp.employee_id,
+      display_name: emp.display_name,
+      sick_quota: q.sick_quota || 0,
+      personal_quota: q.personal_quota || 0,
+      vacation_quota: q.vacation_quota || 0
+    };
+  });
+  return { ok: true, quotas: quotas };
 }
