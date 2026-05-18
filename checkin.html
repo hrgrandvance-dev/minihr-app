@@ -242,11 +242,46 @@
     };
   });
 
+<<<<<<< HEAD
   /* ── Camera button — touchend เรียก .click() ใน same-tick ── */
   document.getElementById('btnCamera').addEventListener('touchend', function(e) {
     e.preventDefault();
     document.getElementById('fileInput').click();
   });
+=======
+  document.getElementById('btnCamera').onclick = async function() {
+    // Force camera capture only - no file upload option
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: 'user' },
+          audio: false 
+        });
+        
+        // Stop stream immediately - we just wanted to check permission
+        stream.getTracks().forEach(track => track.stop());
+        
+        // Now trigger file input with camera capture enforced
+        const fileInput = document.getElementById('fileInput');
+        fileInput.setAttribute('capture', 'user');
+        fileInput.click();
+      } catch (err) {
+        if (err.name === 'NotAllowedError') {
+          showStatus('❌ กรุณาอนุญาติให้ใช้กล้อง', 'error');
+        } else if (err.name === 'NotFoundError') {
+          showStatus('❌ ไม่พบกล้องในอุปกรณ์นี้', 'error');
+        } else {
+          showStatus('❌ เกิดข้อผิดพลาด: ' + err.message, 'error');
+        }
+      }
+    } else {
+      // Fallback for older browsers
+      const fileInput = document.getElementById('fileInput');
+      fileInput.setAttribute('capture', 'user');
+      fileInput.click();
+    }
+  };
+>>>>>>> a4bf16e (restore from zip)
 
   /* ── Fallback สำหรับ desktop (ไม่มี touch) ── */
   document.getElementById('btnCamera').addEventListener('click', function() {
@@ -293,6 +328,7 @@
     document.getElementById('gpsValue').textContent = '🔄 กำลังค้นหาตำแหน่ง...';
     navigator.geolocation.getCurrentPosition(
       function(pos) {
+<<<<<<< HEAD
         gpsCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         gpsError  = null;
         var coordText = gpsCoords.lat.toFixed(5) + ', ' + gpsCoords.lng.toFixed(5);
@@ -315,6 +351,30 @@
         document.getElementById('gpsBox').classList.remove('warn');
         document.getElementById('gpsBox').classList.add('ok');
         checkCanSubmit();
+=======
+        gpsCoords = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude
+        };
+        gpsError = null;
+        
+        // Try to get location name using reverse geocoding
+        reverseGeocode(gpsCoords.lat, gpsCoords.lng).then(function(placeName) {
+          const displayText = placeName 
+            ? '✅ ' + placeName + '\n(' + gpsCoords.lat.toFixed(5) + ', ' + gpsCoords.lng.toFixed(5) + ')'
+            : '✅ ' + gpsCoords.lat.toFixed(5) + ', ' + gpsCoords.lng.toFixed(5);
+          document.getElementById('gpsValue').innerHTML = displayText;
+          document.getElementById('gpsBox').classList.remove('warn');
+          document.getElementById('gpsBox').classList.add('ok');
+          checkCanSubmit();
+        }).catch(function(err) {
+          // Fallback to coordinates if reverse geocoding fails
+          document.getElementById('gpsValue').innerHTML = '✅ ' + gpsCoords.lat.toFixed(5) + ', ' + gpsCoords.lng.toFixed(5);
+          document.getElementById('gpsBox').classList.remove('warn');
+          document.getElementById('gpsBox').classList.add('ok');
+          checkCanSubmit();
+        });
+>>>>>>> a4bf16e (restore from zip)
       },
       function(err) {
         gpsCoords = null;
@@ -328,6 +388,7 @@
     );
   }
 
+<<<<<<< HEAD
   function haversine(lat1, lng1, lat2, lng2) {
     var R = 6371000;
     var dLat = (lat2 - lat1) * Math.PI / 180;
@@ -336,6 +397,38 @@
             Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)*Math.sin(dLng/2);
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   }
+=======
+  function reverseGeocode(lat, lng) {
+    return fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lng + '&zoom=18&addressdetails=1')
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.address) {
+          const addr = data.address;
+          // Try to build a readable address
+          const parts = [];
+          if (addr.shop) parts.push(addr.shop);
+          if (addr.building) parts.push(addr.building);
+          if (addr.road) parts.push(addr.road);
+          if (addr.suburb) parts.push(addr.suburb);
+          if (addr.city) parts.push(addr.city);
+          
+          if (parts.length > 0) {
+            return parts.slice(0, 3).join(', ');
+          }
+        }
+        return null;
+      })
+      .catch(function(err) {
+        console.error('Reverse geocode error:', err);
+        return null;
+      });
+  }
+
+  async function processImage(file) {
+    const img = await loadImage(file);
+    const canvas = document.createElement('canvas');
+    const maxW = 800;
+>>>>>>> a4bf16e (restore from zip)
 
   function reverseGeocode(lat, lng) {
     return fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat='+lat+'&lon='+lng+'&zoom=18&addressdetails=1',
