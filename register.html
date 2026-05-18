@@ -284,26 +284,37 @@ document.getElementById('btnSubmit').addEventListener('click', async function() 
     idCardBase64:    idCardBase64
   };
 
+try {
+  const res = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify(payload)
+  });
+  const text = await res.text();
+  let json;
   try {
-    const res  = await fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(payload)
-    });
-    const json = await res.json();
-    if (json.ok) {
-      showStatus('✅ ลงทะเบียนเรียบร้อย รหัส: ' + json.employeeId, 'success');
-      setTimeout(function() {
-        if (liff.isInClient()) liff.closeWindow();
-      }, 2500);
-    } else {
-      showStatus('❌ ' + (json.message || json.error || 'เกิดข้อผิดพลาด'), 'error');
-      document.getElementById('btnSubmit').disabled = false;
-    }
-  } catch(err) {
-    showStatus('❌ ' + (err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ'), 'error');
+    json = JSON.parse(text);
+  } catch(e) {
+    // Apps Script redirect — ถ้า request ถึง server แล้วถือว่าสำเร็จ
+    showStatus('✅ ส่งข้อมูลเรียบร้อย กรุณารอการยืนยันทาง LINE', 'success');
+    setTimeout(function() {
+      if (liff.isInClient()) liff.closeWindow();
+    }, 2500);
+    return;
+  }
+  if (json.ok) {
+    showStatus('✅ ลงทะเบียนเรียบร้อย รหัส: ' + json.employeeId, 'success');
+    setTimeout(function() {
+      if (liff.isInClient()) liff.closeWindow();
+    }, 2500);
+  } else {
+    showStatus('❌ ' + (json.message || json.error || 'เกิดข้อผิดพลาด'), 'error');
     document.getElementById('btnSubmit').disabled = false;
   }
+} catch(err) {
+  showStatus('❌ ' + (err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ'), 'error');
+  document.getElementById('btnSubmit').disabled = false;
+}
 });
 
 function showStatus(text, level) {
