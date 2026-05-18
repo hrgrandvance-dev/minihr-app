@@ -58,21 +58,29 @@
   let userId = null;
 
   (async function init() {
-    await liff.init({ liffId: LIFF_ID, withLoginOnExternalBrowser: true });
-    if (!liff.isLoggedIn()) liff.login();
-    const profile = await liff.getProfile();
-    userId = profile.userId;
-    loadInbox();
+    try {
+      await liff.init({ liffId: LIFF_ID, withLoginOnExternalBrowser: true });
+      if (!liff.isLoggedIn()) { liff.login(); return; }
+      const profile = await liff.getProfile();
+      userId = profile.userId;
+      loadInbox();
+    } catch (err) {
+      document.getElementById('list').innerHTML = '<div class="empty">โหลดไม่ได้: ' + err.message + '</div>';
+    }
   })();
 
   async function loadInbox() {
-    const res = await fetch(APPS_SCRIPT_URL, {
-      method: 'POST', headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'approval_list', lineUserId: userId })
-    });
-    const json = await res.json();
-    if (!json.ok) { alert(json.error); return; }
-    render(json);
+    try {
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST', headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'approval_list', lineUserId: userId })
+      });
+      const json = await res.json();
+      if (!json.ok) { alert(json.error); return; }
+      render(json);
+    } catch (err) {
+      document.getElementById('list').innerHTML = '<div class="empty">โหลดไม่ได้: ' + err.message + '</div>';
+    }
   }
 
   function render(d) {
