@@ -258,7 +258,6 @@
     type="file"
     id="fileInput"
     accept="image/*"
-    capture="user"
     style="display:none"
   >
 
@@ -290,37 +289,21 @@
     };
   });
 
-  document.getElementById('btnCamera').onclick = async function() {
-    // Force camera capture only - no file upload option
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: 'user' },
-          audio: false 
-        });
-        
-        // Stop stream immediately - we just wanted to check permission
-        stream.getTracks().forEach(track => track.stop());
-        
-        // Now trigger file input with camera capture enforced
-        const fileInput = document.getElementById('fileInput');
-        fileInput.setAttribute('capture', 'user');
-        fileInput.click();
-      } catch (err) {
-        if (err.name === 'NotAllowedError') {
-          showStatus('❌ ' + getText('ERROR.camera_permission', 'th'), 'error');
-        } else if (err.name === 'NotFoundError') {
-          showStatus('❌ ' + getText('ERROR.camera_not_found', 'th'), 'error');
-        } else {
-          showStatus('❌ ' + getText('ERROR.load_failed', 'th') + ': ' + err.message, 'error');
-        }
-      }
+  document.getElementById('btnCamera').onclick = function() {
+    const fileInput = document.getElementById('fileInput');
+    // iOS Safari และ LINE LIFF บน iPhone ไม่รองรับ getUserMedia ใน WebView
+    // วิธีที่ถูกต้องคือใช้ input[type=file] พร้อม capture attribute โดยตรง
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    if (isIOS) {
+      // บน iOS ใช้ 'environment' = กล้องหลัง (แนะนำสำหรับ check-in)
+      // เปลี่ยนเป็น 'user' ถ้าต้องการกล้องหน้า
+      fileInput.setAttribute('capture', 'environment');
     } else {
-      // Fallback for older browsers
-      const fileInput = document.getElementById('fileInput');
       fileInput.setAttribute('capture', 'user');
-      fileInput.click();
     }
+    // Reset value เพื่อให้กดถ่ายซ้ำได้
+    fileInput.value = '';
+    fileInput.click();
   };
 
   document.getElementById('fileInput').onchange = async function(e) {

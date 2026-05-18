@@ -1282,23 +1282,6 @@ function submitOT(payload) {
   }
   const totalHours = (endMin - startMin) / 60;
 
-  // === Lead time check ===
-  // OT request must be at least N min before work_end if same day
-  const config = getConfig();
-  const today = todayBangkok();
-  if (otDate === today) {
-    const workEnd = parseHHMM(config.work_end);
-    const nowMin = minutesNow();
-    const leadRequired = config.ot_request_lead_min || 30;
-    if (nowMin > workEnd - leadRequired) {
-      return {
-        ok: false,
-        error: 'ot_lead_time',
-        message: 'การขอ OT ต้องส่งก่อนเลิกงานอย่างน้อย ' + leadRequired + ' นาที'
-      };
-    }
-  }
-
   // === Insert row ===
   const otId = nextOTId();
   const newOT = {

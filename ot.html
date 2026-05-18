@@ -23,6 +23,9 @@
     width: 100%; border: 1px solid #DDD; padding: 10px; border-radius: 6px; font-family: inherit; font-size: 14px;
   }
   .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .time-col { display: flex; flex-direction: column; }
+  .time-label { font-size: 11px; color: #888; margin-bottom: 4px; font-weight: 600; }
+  .time-label-en { font-size: 9px; color: #BBB; }
   .btn-submit {
     background: #D4550A; color: #fff; border: none; padding: 16px;
     border-radius: 12px; font-size: 17px; font-weight: 700; width: 100%; margin-top: 8px;
@@ -52,8 +55,14 @@
 <div class="field">
   <label>ช่วงเวลา *<div class="label-en">Time Range</div></label>
   <div class="row">
-    <input type="time" id="startTime" placeholder="เริ่ม / Start">
-    <input type="time" id="endTime" placeholder="สิ้นสุด / End">
+    <div class="time-col">
+      <div class="time-label">🕐 จาก <span class="time-label-en">From</span></div>
+      <input type="time" id="startTime">
+    </div>
+    <div class="time-col">
+      <div class="time-label">🕔 ถึง <span class="time-label-en">To</span></div>
+      <input type="time" id="endTime">
+    </div>
   </div>
 </div>
 
