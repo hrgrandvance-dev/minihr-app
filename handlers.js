@@ -713,6 +713,33 @@ function hrGetLeaveQuota(payload) {
   return { ok: true, quotas: quotas };
 }
 
+function hrSetLeaveQuota(payload) {
+  if (!isOwner(payload.lineUserId)) return { ok: false, error: 'forbidden' };
+  const employeeId = payload.employeeId;
+  const year = Number(payload.year);
+  const updates = payload.updates || {};
+  if (!employeeId || !year) return { ok: false, error: 'missing_params' };
+
+  const existing = getLeaveQuota(employeeId, year);
+  if (existing) {
+    updateRowByNumber(SHEETS.LEAVE_QUOTA.name, existing._row, updates);
+  } else {
+    const config = getConfig();
+    const newRow = {
+      employee_id: employeeId,
+      year: year,
+      sick_quota:     updates.sick_quota     !== undefined ? updates.sick_quota     : config.sick_quota_default,
+      sick_used:      0,
+      personal_quota: updates.personal_quota !== undefined ? updates.personal_quota : config.personal_quota_default,
+      personal_used:  0,
+      vacation_quota: updates.vacation_quota !== undefined ? updates.vacation_quota : config.vacation_quota_default,
+      vacation_used:  0,
+    };
+    insertRow(SHEETS.LEAVE_QUOTA.name, newRow);
+  }
+  return { ok: true };
+}
+
 function hrGetReport(payload) {
   if (!isOwner(payload.lineUserId)) return { ok: false, error: 'forbidden' };
   const period = payload.period || currentPeriod();

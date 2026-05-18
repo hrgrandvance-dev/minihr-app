@@ -104,12 +104,12 @@ const LIFF_ID = '2010077723-TGnTyHC6';
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxBkocmZN1yPzozv74oJAq3-qbKky0-KM9a1ZTUrajg6Qh5eaJIikrB4vJcttXr_UWS/exec';
 
   (async function init() {
-    await liff.init({ liffId: LIFF_ID });
-    if (!liff.isLoggedIn()) liff.login();
-    const profile = await liff.getProfile();
-    const userId = profile.userId;
-
     try {
+      await liff.init({ liffId: LIFF_ID, withLoginOnExternalBrowser: true });
+      if (!liff.isLoggedIn()) { liff.login(); return; }
+      const profile = await liff.getProfile();
+      const userId = profile.userId;
+
       const res = await fetch(APPS_SCRIPT_URL, {
         method: 'POST', headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ action: 'balance', lineUserId: userId })
@@ -118,7 +118,7 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxBkocmZN1yPzoz
       if (!json.ok) { alert(json.error); return; }
       render(json);
     } catch (err) {
-      alert('โหลดข้อมูลไม่ได้: ' + err.message);
+      document.getElementById('loading').textContent = 'โหลดข้อมูลไม่ได้: ' + err.message;
     }
   })();
 
