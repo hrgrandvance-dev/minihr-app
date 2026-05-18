@@ -67,7 +67,7 @@
 
   async function loadInbox() {
     const res = await fetch(APPS_SCRIPT_URL, {
-      method: 'POST', headers: { 'Content-Type': 'text/plain' }, mode: 'no-cors',
+      method: 'POST', headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({ action: 'approval_list', lineUserId: userId })
     });
     const json = await res.json();
@@ -120,7 +120,7 @@
     const labels = { approve: 'อนุมัติ', reject: 'ปฏิเสธ', need_info: 'ขอข้อมูลเพิ่ม' };
     if (!confirm(labels[action] + ' ' + id + ' (' + level + ')?')) return;
     const res = await fetch(APPS_SCRIPT_URL, {
-      method: 'POST', headers: { 'Content-Type': 'text/plain' }, mode: 'no-cors',
+      method: 'POST', headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({
         action: 'approve_item',
         lineUserId: userId,
@@ -142,6 +142,7 @@
 </script>
 </body>
 </html>
+
 
 
 

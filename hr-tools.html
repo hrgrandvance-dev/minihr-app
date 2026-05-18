@@ -183,7 +183,7 @@
     data.action = action;
     data.lineUserId = userId;
     const res = await fetch(APPS_SCRIPT_URL, {
-      method: 'POST', headers: { 'Content-Type': 'text/plain' }, mode: 'no-cors',
+      method: 'POST', headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify(data)
     });
     return await res.json();
@@ -351,6 +351,7 @@
 </script>
 </body>
 </html>
+
 
 
 

@@ -124,7 +124,7 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxBkocmZN1yPzoz
 
   async function loadQuota() {
     const res = await fetch(APPS_SCRIPT_URL, {
-      method: 'POST', headers: { 'Content-Type': 'text/plain' }, mode: 'no-cors',
+      method: 'POST', headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({ action: 'balance', lineUserId: userId })
     });
     const json = await res.json();
@@ -178,7 +178,7 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxBkocmZN1yPzoz
     };
     try {
       const res = await fetch(APPS_SCRIPT_URL, {
-        method: 'POST', headers: { 'Content-Type': 'text/plain' }, mode: 'no-cors',
+        method: 'POST', headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify(payload)
       });
       const json = await res.json();
@@ -202,6 +202,7 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxBkocmZN1yPzoz
 </script>
 </body>
 </html>
+
 
 
 
