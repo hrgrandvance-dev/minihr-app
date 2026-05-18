@@ -518,10 +518,12 @@ function currentPeriod() {
 }
 
 function countApprovedWorkDays(employeeId, period) {
-  // Count distinct dates with at least one approved IN checkin
+  // นับวันที่มี IN checkin — รวม flagged_late และ flagged_location ด้วย
+  // HR ดูรายละเอียดเองจาก Sheet ไม่ต้องอนุมัติ
+  const validStatuses = ['approved', 'flagged_late', 'flagged_location'];
   const checkins = filterRows(SHEETS.CHECKINS.name, function(r) {
     if (r.employee_id !== employeeId) return false;
-    if (r.status !== 'approved') return false;
+    if (validStatuses.indexOf(r.status) < 0) return false;
     if (r.slot !== 'IN') return false;
     const dateStr = formatDate(new Date(r.checkin_date));
     return dateStr.indexOf(period) === 0;
@@ -965,7 +967,16 @@ function checkin(payload) {
 
   // === Insert row ===
   const checkinId = nextCheckinId(today);
-  const status = inRange ? 'approved' : 'out_of_range';
+
+  // Auto-approve ทุก checkin — HR ดู flagged เฉพาะที่ผิดปกติ
+  let status;
+  if (!inRange) {
+    status = 'flagged_location'; // นอกรัศมี
+  } else if (isLate && slot === 'IN') {
+    status = 'flagged_late';     // มาสาย
+  } else {
+    status = 'approved';         // ปกติ — auto-approve
+  }
 
   const newRow = {
     checkin_id: checkinId,
@@ -978,8 +989,8 @@ function checkin(payload) {
     distance_m: Math.round(distance),
     selfie_url: selfieUrl,
     status: status,
-    approved_by: inRange ? 'system' : '',
-    approved_at: inRange ? nowBangkok() : ''
+    approved_by: 'system',
+    approved_at: nowBangkok()
   };
 
   try {
@@ -989,17 +1000,31 @@ function checkin(payload) {
     return { ok: false, error: 'insert_failed' };
   }
 
-  // === Notify owner if out of range ===
+  // === Notify HR if flagged ===
   if (!inRange) {
     pushFlexToOwner(
-      'นอกรัศมี: ' + emp.display_name,
+      '📍 นอกรัศมี: ' + emp.display_name,
       buildCheckinNotifyCard({
         employee: emp,
         slot: slot,
         distance: Math.round(distance),
         selfieUrl: selfieUrl,
         time: nowBangkok(),
-        outOfRange: true
+        outOfRange: true,
+        flagReason: 'นอกรัศมี ' + Math.round(distance) + 'm'
+      })
+    );
+  } else if (isLate && slot === 'IN') {
+    pushFlexToOwner(
+      '⏰ มาสาย: ' + emp.display_name,
+      buildCheckinNotifyCard({
+        employee: emp,
+        slot: slot,
+        distance: Math.round(distance),
+        selfieUrl: selfieUrl,
+        time: nowBangkok(),
+        outOfRange: false,
+        flagReason: 'มาสายเกินกำหนด'
       })
     );
   }
