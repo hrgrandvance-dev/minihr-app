@@ -6,6 +6,7 @@
 <title>ลงเวลา — Mini HR App</title>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="translations.js"></script>
 
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -307,11 +308,11 @@
         fileInput.click();
       } catch (err) {
         if (err.name === 'NotAllowedError') {
-          showStatus('❌ กรุณาอนุญาติให้ใช้กล้อง', 'error');
+          showStatus('❌ ' + getText('ERROR.camera_permission', 'th'), 'error');
         } else if (err.name === 'NotFoundError') {
-          showStatus('❌ ไม่พบกล้องในอุปกรณ์นี้', 'error');
+          showStatus('❌ ' + getText('ERROR.camera_not_found', 'th'), 'error');
         } else {
-          showStatus('❌ เกิดข้อผิดพลาด: ' + err.message, 'error');
+          showStatus('❌ ' + getText('ERROR.load_failed', 'th') + ': ' + err.message, 'error');
         }
       }
     } else {
@@ -335,7 +336,7 @@
   (async function init() {
     try {
       if (!LIFF_ID || LIFF_ID === '') {
-        showStatus('❌ ยังไม่ได้ตั้งค่า LIFF_ID ใน Code.gs', 'error');
+        showStatus('❌ ' + getText('ERROR.liff_config_missing', 'th'), 'error');
         return;
       }
       await liff.init({ liffId: LIFF_ID, withLoginOnExternalBrowser: true });
@@ -346,7 +347,7 @@
       const profile = await liff.getProfile();
       userId = profile.userId;
       if (!userId) {
-        showStatus('❌ ไม่พบ LINE user id', 'error');
+        showStatus('❌ ' + getText('ERROR.line_user_id_missing', 'th'), 'error');
         return;
       }
       requestGPS();
@@ -360,13 +361,13 @@
   function requestGPS() {
     if (!navigator.geolocation) {
       gpsError = 'unsupported';
-      document.getElementById('gpsValue').innerHTML = '❌ อุปกรณ์ไม่รองรับ GPS';
+      document.getElementById('gpsValue').innerHTML = '❌ ' + getText('ERROR.gps_unsupported', 'th');
       document.getElementById('gpsBox').classList.add('warn');
       checkCanSubmit();
       return;
     }
 
-    document.getElementById('gpsValue').innerHTML = '🔄 กำลังค้นหาตำแหน่ง...';
+    document.getElementById('gpsValue').innerHTML = '🔄 ' + getText('LOADING.requesting_location', 'th');
 
     navigator.geolocation.getCurrentPosition(
       function(pos) {
@@ -375,10 +376,9 @@
           lng: pos.coords.longitude
         };
         gpsError = null;
-        
-        // Try to get location name using reverse geocoding
+
         reverseGeocode(gpsCoords.lat, gpsCoords.lng).then(function(placeName) {
-          const displayText = placeName 
+          const displayText = placeName
             ? '✅ ' + placeName + '\n(' + gpsCoords.lat.toFixed(5) + ', ' + gpsCoords.lng.toFixed(5) + ')'
             : '✅ ' + gpsCoords.lat.toFixed(5) + ', ' + gpsCoords.lng.toFixed(5);
           document.getElementById('gpsValue').innerHTML = displayText;
@@ -386,7 +386,6 @@
           document.getElementById('gpsBox').classList.add('ok');
           checkCanSubmit();
         }).catch(function(err) {
-          // Fallback to coordinates if reverse geocoding fails
           document.getElementById('gpsValue').innerHTML = '✅ ' + gpsCoords.lat.toFixed(5) + ', ' + gpsCoords.lng.toFixed(5);
           document.getElementById('gpsBox').classList.remove('warn');
           document.getElementById('gpsBox').classList.add('ok');
@@ -404,7 +403,7 @@
         } else {
           gpsError = 'unknown';
         }
-        document.getElementById('gpsValue').innerHTML = '❌ เปิด GPS ไม่สำเร็จ<br><button class="retry-btn" onclick="requestGPS()">ลองใหม่</button>';
+        document.getElementById('gpsValue').innerHTML = '❌ ' + getText('ERROR.gps_failed', 'th') + '<br><button class="retry-btn" onclick="requestGPS()">' + getText('MISC.wait', 'th').split(' ')[0] + '</button>';
         document.getElementById('gpsBox').classList.add('warn');
         checkCanSubmit();
       },
@@ -508,11 +507,11 @@
       return;
     }
     if (!imageBase64) {
-      showStatus('❌ กรุณาถ่ายรูปก่อน', 'error');
+      showStatus('❌ ' + getText('ERROR.missing_camera', 'th'), 'error');
       return;
     }
 
-    showStatus('⏳ กำลังส่งข้อมูล...', 'loading');
+    showStatus('⏳ ' + getText('LOADING.sending', 'th'), 'loading');
     document.getElementById('btnSubmit').disabled = true;
 
     const payload = {
@@ -535,14 +534,14 @@
       const json = await res.json();
 
       if (json.ok) {
-        showStatus('✅ ลงเวลาเรียบร้อย', 'success');
+        showStatus('✅ ' + getText('SUCCESS.checkin_success', 'th'), 'success');
         setTimeout(function() {
           if (window.liff) {
             liff.closeWindow();
           }
         }, 2500);
       } else {
-        showStatus('❌ ' + (json.message || json.error || 'เกิดข้อผิดพลาด'), 'error');
+        showStatus('❌ ' + (json.message || json.error || getText('ERROR.load_failed', 'th')), 'error');
         checkCanSubmit();
       }
     } catch (err) {

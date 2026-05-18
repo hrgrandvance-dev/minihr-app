@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>ขอ OT — Mini HR App</title>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="translations.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Noto Sans Thai', system-ui, sans-serif; background: #FFF8F0; padding: 16px; }
@@ -51,8 +52,8 @@
 <div class="field">
   <label>ช่วงเวลา *<div class="label-en">Time Range</div></label>
   <div class="row">
-    <input type="time" id="startTime" placeholder="เริ่ม">
-    <input type="time" id="endTime" placeholder="สิ้นสุด">
+    <input type="time" id="startTime" placeholder="เริ่ม / Start">
+    <input type="time" id="endTime" placeholder="สิ้นสุด / End">
   </div>
 </div>
 
@@ -62,7 +63,7 @@
   <div class="lab">ชั่วโมง<div style="font-size: 9px; color: #777; margin-top: 2px; opacity: 0.8;">Hours</div></div>
 </div>
 
-<div class="field"><label>เหตุผล *<div class="label-en">Reason</div></label><textarea id="reason" rows="3" placeholder="เช่น ปิดยอดสิ้นเดือน"></textarea></div>
+<div class="field"><label>เหตุผล *<div class="label-en">Reason</div></label><textarea id="reason" rows="3" placeholder="เช่น ปิดยอดสิ้นเดือน / e.g. Month-end closure"></textarea></div>
 
 <button class="btn-submit" id="btnSubmit" disabled><span class="btn-text">ส่งคำขอ</span><span class="btn-en">Submit Request</span></button>
 <div id="status"></div>
@@ -108,7 +109,7 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxBkocmZN1yPzoz
   });
 
   document.getElementById('btnSubmit').onclick = async function() {
-    showStatus('กำลังส่ง...', 'loading');
+    showStatus('⏳ ' + getText('LOADING.sending', 'th'), 'loading');
     document.getElementById('btnSubmit').disabled = true;
     const payload = {
       action: 'ot',
@@ -125,7 +126,7 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxBkocmZN1yPzoz
       });
       const json = await res.json();
       if (json.ok) {
-        showStatus('✅ ส่งคำขอ OT เรียบร้อย ' + json.otId, 'success');
+        showStatus('✅ ' + getText('SUCCESS.ot_submitted', 'th') + ' ' + json.otId, 'success');
         setTimeout(function() { liff.closeWindow(); }, 2500);
       } else {
         showStatus('❌ ' + (json.message || json.error), 'error');

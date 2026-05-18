@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>ดูยอด — Mini HR App</title>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="translations.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Noto Sans Thai', system-ui, sans-serif; background: #FFF8F0; padding: 16px; color: #1A1A1A; }
@@ -43,7 +44,7 @@
 </style>
 </head>
 <body>
-<div id="loading">กำลังโหลดข้อมูล...</div>
+<div id="loading" id="loadingText">กำลังโหลดข้อมูล...<div style="font-size:11px;opacity:0.75;margin-top:4px;">Loading Data...</div></div>
 
 <div id="content" style="display:none;">
   <div class="header">
@@ -64,41 +65,42 @@
   </div>
 
   <div class="card">
-    <div class="title">รายละเอียดประมาณการ</div>
-    <div class="row"><span class="lab">ค่าจ้างพื้นฐาน</span><span class="val" id="basePay">฿0</span></div>
-    <div class="row"><span class="lab">ค่า OT</span><span class="val" id="otPay">฿0</span></div>
-    <div class="row"><span class="lab">เงินเพิ่ม</span><span class="val green" id="bonus">฿0</span></div>
-    <div class="row"><span class="lab">เงินหัก</span><span class="val red" id="deduction">฿0</span></div>
+    <div class="title">รายละเอียดประมาณการ<div class="title-en">Details</div></div>
+    <div class="row"><span class="lab">ค่าจ้างพื้นฐาน<div style="font-size:9px;color:#AAA;margin-top:2px;">Base Salary</div></span><span class="val" id="basePay">฿0</span></div>
+    <div class="row"><span class="lab">ค่า OT<div style="font-size:9px;color:#AAA;margin-top:2px;">OT Pay</div></span><span class="val" id="otPay">฿0</span></div>
+    <div class="row"><span class="lab">เงินเพิ่ม<div style="font-size:9px;color:#AAA;margin-top:2px;">Bonus</div></span><span class="val green" id="bonus">฿0</span></div>
+    <div class="row"><span class="lab">เงินหัก<div style="font-size:9px;color:#AAA;margin-top:2px;">Deduction</div></span><span class="val red" id="deduction">฿0</span></div>
   </div>
 
   <div class="card">
-    <div class="title">สิทธิ์ลาคงเหลือ</div>
+    <div class="title">สิทธิ์ลาคงเหลือ<div class="title-en">Leave Quota</div></div>
     <div class="leave-grid">
       <div class="leave-box">
         <div class="n" id="sickLeft">-</div>
-        <div class="l">ลาป่วย</div>
+        <div class="l">ลาป่วย<div style="font-size:9px;color:#999;margin-top:2px;">Sick</div></div>
         <div class="max">จาก <span id="sickMax">-</span></div>
       </div>
       <div class="leave-box">
         <div class="n" id="personalLeft">-</div>
-        <div class="l">ลากิจ</div>
+        <div class="l">ลากิจ<div style="font-size:9px;color:#999;margin-top:2px;">Personal</div></div>
         <div class="max">จาก <span id="personalMax">-</span></div>
       </div>
       <div class="leave-box">
         <div class="n" id="vacationLeft">-</div>
-        <div class="l">พักร้อน</div>
+        <div class="l">พักร้อน<div style="font-size:9px;color:#999;margin-top:2px;">Vacation</div></div>
         <div class="max">จาก <span id="vacationMax">-</span></div>
       </div>
     </div>
   </div>
 
   <div class="card" id="lastPaymentCard" style="display:none;">
-    <div class="title">งวดล่าสุด</div>
+    <div class="title">งวดล่าสุด<div class="title-en">Last Payment</div></div>
     <div class="row"><span class="lab" id="lastPeriod">-</span><span class="val" id="lastTotal">-</span></div>
-    <div class="row"><span class="lab">สถานะ</span><span class="val" id="lastStatus">-</span></div>
+    <div class="row"><span class="lab">สถานะ<div style="font-size:9px;color:#AAA;margin-top:2px;">Status</div></span><span class="val" id="lastStatus">-</span></div>
   </div>
 </div>
 
+<script src="translations.js"></script>
 <script>
 const LIFF_ID = '2010077723-TGnTyHC6';
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxBkocmZN1yPzozv74oJAq3-qbKky0-KM9a1ZTUrajg6Qh5eaJIikrB4vJcttXr_UWS/exec';

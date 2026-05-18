@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>แนบหลักฐาน — Mini HR App</title>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="translations.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Noto Sans Thai', system-ui, sans-serif; background: #FFF8F0; padding: 16px; }
@@ -83,7 +84,7 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxBkocmZN1yPzoz
   const recordType = params.get('type') || 'leave';
 
   document.getElementById('recId').textContent = recordId || '-';
-  document.getElementById('recType').textContent = recordType === 'leave' ? 'ใบลา' : 'OT';
+  document.getElementById('recType').textContent = recordType === 'leave' ? getText('REQUEST_TYPE.leave', 'th') : getText('REQUEST_TYPE.ot', 'th');
 
   (async function init() {
     await liff.init({ liffId: LIFF_ID, withLoginOnExternalBrowser: true });
@@ -125,7 +126,7 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxBkocmZN1yPzoz
   }
 
   document.getElementById('btnSubmit').onclick = async function() {
-    showStatus('กำลังส่ง...', 'loading');
+    showStatus('⏳ ' + getText('LOADING.sending', 'th'), 'loading');
     document.getElementById('btnSubmit').disabled = true;
     const payload = {
       action: 'evidence',
@@ -142,7 +143,7 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxBkocmZN1yPzoz
       });
       const json = await res.json();
       if (json.ok) {
-        showStatus('✅ ส่งหลักฐานเรียบร้อย', 'success');
+        showStatus('✅ ' + getText('SUCCESS.evidence_submitted', 'th'), 'success');
         setTimeout(function() { liff.closeWindow(); }, 2000);
       } else {
         showStatus('❌ ' + (json.message || json.error), 'error');

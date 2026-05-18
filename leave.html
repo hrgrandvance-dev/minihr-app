@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>ส่งใบลา — Mini HR App</title>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="translations.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Noto Sans Thai', system-ui, sans-serif; background: #FFF8F0; padding: 16px; }
@@ -81,20 +82,20 @@
 <div class="field">
   <label>ประเภทการลา *<div class="label-en">Leave Type</div></label>
   <div class="types">
-    <button class="type-btn" data-type="sick">ลาป่วย</button>
-    <button class="type-btn" data-type="personal">ลากิจ</button>
-    <button class="type-btn" data-type="vacation">พักร้อน</button>
-    <button class="type-btn" data-type="unpaid">ไม่รับเงิน</button>
+    <button class="type-btn" data-type="sick"><span>ลาป่วย</span><div style="font-size:9px;opacity:0.7;margin-top:2px;">Sick</div></button>
+    <button class="type-btn" data-type="personal"><span>ลากิจ</span><div style="font-size:9px;opacity:0.7;margin-top:2px;">Personal</div></button>
+    <button class="type-btn" data-type="vacation"><span>พักร้อน</span><div style="font-size:9px;opacity:0.7;margin-top:2px;">Vacation</div></button>
+    <button class="type-btn" data-type="unpaid"><span>ไม่รับเงิน</span><div style="font-size:9px;opacity:0.7;margin-top:2px;">Unpaid</div></button>
   </div>
 </div>
 
 <div class="field">
   <label>ระยะเวลา *<div class="label-en">Duration</div></label>
   <div class="types">
-    <button class="type-btn" data-dur="full_day">เต็มวัน</button>
-    <button class="type-btn" data-dur="half_day_morning">ครึ่งเช้า</button>
-    <button class="type-btn" data-dur="half_day_afternoon">ครึ่งบ่าย</button>
-    <button class="type-btn" data-dur="hourly">รายชั่วโมง</button>
+    <button class="type-btn" data-dur="full_day"><span>เต็มวัน</span><div style="font-size:9px;opacity:0.7;margin-top:2px;">Full Day</div></button>
+    <button class="type-btn" data-dur="half_day_morning"><span>ครึ่งเช้า</span><div style="font-size:9px;opacity:0.7;margin-top:2px;">Half AM</div></button>
+    <button class="type-btn" data-dur="half_day_afternoon"><span>ครึ่งบ่าย</span><div style="font-size:9px;opacity:0.7;margin-top:2px;">Half PM</div></button>
+    <button class="type-btn" data-dur="hourly"><span>รายชั่วโมง</span><div style="font-size:9px;opacity:0.7;margin-top:2px;">Hourly</div></button>
   </div>
 </div>
 
@@ -102,7 +103,7 @@
 <div class="field"><label>วันที่สิ้นสุด<div class="label-en">End Date</div></label><input type="date" id="endDate"></div>
 <div class="field" id="hoursField" style="display:none;"><label>จำนวนชั่วโมง<div class="label-en">Hours</div></label><input type="number" id="totalHours" min="0.5" step="0.5"></div>
 
-<div class="field"><label>เหตุผล *<div class="label-en">Reason</div></label><textarea id="reason" rows="3" placeholder="ระบุเหตุผลโดยย่อ"></textarea></div>
+<div class="field"><label>เหตุผล *<div class="label-en">Reason</div></label><textarea id="reason" rows="3" placeholder="ระบุเหตุผลโดยย่อ / Brief reason"></textarea></div>
 
 <button class="btn-submit" id="btnSubmit" disabled><span class="btn-text">ส่งใบลา</span><span class="btn-en">Submit Leave</span></button>
 <div id="status"></div>
@@ -162,7 +163,7 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxBkocmZN1yPzoz
   }
 
   document.getElementById('btnSubmit').onclick = async function() {
-    showStatus('กำลังส่ง...', 'loading');
+    showStatus('⏳ ' + getText('LOADING.sending', 'th'), 'loading');
     document.getElementById('btnSubmit').disabled = true;
     const startDate = document.getElementById('startDate').value;
     const endDate = document.getElementById('endDate').value || startDate;
@@ -183,7 +184,7 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxBkocmZN1yPzoz
       });
       const json = await res.json();
       if (json.ok) {
-        showStatus('✅ ส่งใบลาเรียบร้อย ' + json.leaveId, 'success');
+        showStatus('✅ ' + getText('SUCCESS.leave_submitted', 'th') + ' ' + json.leaveId, 'success');
         setTimeout(function() { liff.closeWindow(); }, 2500);
       } else {
         showStatus('❌ ' + (json.message || json.error), 'error');

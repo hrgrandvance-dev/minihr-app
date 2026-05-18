@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>ตอบกลับ — Mini HR App</title>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="translations.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -51,29 +52,29 @@
     const status = params.get('status') || 'ok';
     const message = params.get('message') || 'เรียบร้อย';
 
-    if (status === 'ok' || status === 'success') {
-      document.getElementById('icon').textContent = '✅';
-      document.getElementById('title').textContent = 'สำเร็จ';
-      document.getElementById('titleEn').textContent = 'Success';
-      document.getElementById('text').textContent = message;
-    } else if (status === 'error') {
-      document.getElementById('icon').textContent = '❌';
-      document.getElementById('title').textContent = 'ผิดพลาด';
-      document.getElementById('titleEn').textContent = 'Error';
-      document.getElementById('text').textContent = message;
-    } else if (status === 'pending') {
-      document.getElementById('icon').textContent = '⏳';
-      document.getElementById('title').textContent = 'รอประมวลผล';
-      document.getElementById('titleEn').textContent = 'Processing';
-      document.getElementById('text').textContent = message;
-    } else {
-      document.getElementById('icon').textContent = 'ℹ️';
-      document.getElementById('title').textContent = status;
-      document.getElementById('titleEn').textContent = status;
-      document.getElementById('text').textContent = message;
-    }
+     if (status === 'ok' || status === 'success') {
+       document.getElementById('icon').textContent = '✅';
+       document.getElementById('title').textContent = getText('RESPONSE_STATUS.success', 'th');
+       document.getElementById('titleEn').textContent = getText('RESPONSE_STATUS.success', 'en');
+       document.getElementById('text').textContent = message;
+     } else if (status === 'error') {
+       document.getElementById('icon').textContent = '❌';
+       document.getElementById('title').textContent = getText('RESPONSE_STATUS.error', 'th');
+       document.getElementById('titleEn').textContent = getText('RESPONSE_STATUS.error', 'en');
+       document.getElementById('text').textContent = message;
+     } else if (status === 'pending') {
+       document.getElementById('icon').textContent = '⏳';
+       document.getElementById('title').textContent = getText('RESPONSE_STATUS.pending', 'th');
+       document.getElementById('titleEn').textContent = getText('RESPONSE_STATUS.pending', 'en');
+       document.getElementById('text').textContent = message;
+     } else {
+       document.getElementById('icon').textContent = 'ℹ️';
+       document.getElementById('title').textContent = status;
+       document.getElementById('titleEn').textContent = status;
+       document.getElementById('text').textContent = message;
+     }
 
-    document.getElementById('btnClose').style.display = 'inline-block';
+     document.getElementById('btnClose').style.display = 'inline-block';
 
     if (status === 'ok' || status === 'success') {
       setTimeout(function() {
