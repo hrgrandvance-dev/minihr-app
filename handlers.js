@@ -460,43 +460,92 @@ function getBalance(payload) {
 
   const period = payload.period || currentPeriod();
   const year = parseInt(period.split('-')[0], 10);
+  const month = parseInt(period.split('-')[1], 10) - 1; // 0-indexed
+
+  const config = getConfig();
+  const payType = emp.pay_type || 'monthly'; // 'monthly' หรือ 'daily'
 
   // === Work days this period ===
   const workDays = countApprovedWorkDays(emp.employee_id, period);
 
+  // === Total working days in this period (สำหรับคำนวณขาดงาน) ===
+  const periodStart = new Date(year, month, 1);
+  const periodEnd = new Date(year, month + 1, 0);
+  const totalWorkingDaysInPeriod = countWorkingDays(periodStart, periodEnd);
+
   // === OT hours this period ===
   const otHours = sumApprovedOT(emp.employee_id, period);
-
-  // === Pay calculation (estimate) ===
-  const dailyRate = Number(emp.base_pay_monthly || 0) / 22; // 22 working days/month
-  const config = getConfig();
   const otRate = Number(emp.ot_rate_per_hour || 0);
-  const basePay = workDays * dailyRate;
-  const otPay = otHours * otRate * config.ot_rate_multiplier;
+  const otPay = otHours * otRate * (config.ot_rate_multiplier || 1.5);
 
-  // === Bonus/deduction ===
-  const bonus = sumPayItems(emp.employee_id, period, 'bonus');
+  // === Base pay calculation ===
+  let basePay = 0;
+  let dailyRate = 0;
+  let leaveDeduction = 0;
+  let absentDeduction = 0;
+
+  if (payType === 'daily') {
+    // รายวัน: จ่ายตามวันที่มาจริง
+    dailyRate = Number(emp.daily_rate || 0);
+    basePay = workDays * dailyRate;
+  } else {
+    // รายเดือน: จ่ายเต็มเงินเดือน แล้วหักถ้าลาเกินโควต้าหรือขาดงาน
+    basePay = Number(emp.base_pay_monthly || 0);
+    dailyRate = totalWorkingDaysInPeriod > 0
+      ? basePay / totalWorkingDaysInPeriod
+      : basePay / 22;
+
+    // หักลาเกินโควต้า (ทั้ง sick + personal — vacation ปกติไม่หัก)
+    const quota = getLeaveQuota(emp.employee_id, year) || {};
+    const sickOver  = Math.max(0, Number(quota.sick_used     || 0) - Number(quota.sick_quota     || 0));
+    const persOver  = Math.max(0, Number(quota.personal_used || 0) - Number(quota.personal_quota || 0));
+    leaveDeduction  = Math.round((sickOver + persOver) * dailyRate);
+
+    // หักขาดงาน (ไม่ลา ไม่มาเช็คอิน)
+    const approvedLeaveDays = countApprovedLeaveDays(emp.employee_id, period);
+    const absentDays = Math.max(0, totalWorkingDaysInPeriod - workDays - approvedLeaveDays);
+    absentDeduction = Math.round(absentDays * dailyRate);
+  }
+
+  // === ค่าอาหาร + ค่าเดินทาง (100 บาท/วันมาจริง) ===
+  const MEAL_ALLOWANCE_PER_DAY    = 50;
+  const TRAVEL_ALLOWANCE_PER_DAY  = 50;
+  const mealAllowance   = workDays * MEAL_ALLOWANCE_PER_DAY;
+  const travelAllowance = workDays * TRAVEL_ALLOWANCE_PER_DAY;
+
+  // === Bonus/deduction จาก PayItems (HR บันทึกเอง: เบี้ยขยัน, ค่าครองชีพ ฯลฯ) ===
+  const bonus     = sumPayItems(emp.employee_id, period, 'bonus');
   const deduction = sumPayItems(emp.employee_id, period, 'deduction');
 
-  const estimateTotal = basePay + otPay + bonus - deduction;
+  // === รวม estimate ===
+  const estimateTotal = Math.round(
+    basePay
+    - leaveDeduction
+    - absentDeduction
+    + otPay
+    + mealAllowance
+    + travelAllowance
+    + bonus
+    - deduction
+  );
 
   // === Leave quota remaining ===
-  const quota = getLeaveQuota(emp.employee_id, year) || {};
+  const quota2 = getLeaveQuota(emp.employee_id, year) || {};
   const leaveBalance = {
     sick: {
-      quota: Number(quota.sick_quota || 0),
-      used: Number(quota.sick_used || 0),
-      remaining: Number(quota.sick_quota || 0) - Number(quota.sick_used || 0)
+      quota:     Number(quota2.sick_quota     || 0),
+      used:      Number(quota2.sick_used      || 0),
+      remaining: Number(quota2.sick_quota     || 0) - Number(quota2.sick_used     || 0)
     },
     personal: {
-      quota: Number(quota.personal_quota || 0),
-      used: Number(quota.personal_used || 0),
-      remaining: Number(quota.personal_quota || 0) - Number(quota.personal_used || 0)
+      quota:     Number(quota2.personal_quota || 0),
+      used:      Number(quota2.personal_used  || 0),
+      remaining: Number(quota2.personal_quota || 0) - Number(quota2.personal_used || 0)
     },
     vacation: {
-      quota: Number(quota.vacation_quota || 0),
-      used: Number(quota.vacation_used || 0),
-      remaining: Number(quota.vacation_quota || 0) - Number(quota.vacation_used || 0)
+      quota:     Number(quota2.vacation_quota || 0),
+      used:      Number(quota2.vacation_used  || 0),
+      remaining: Number(quota2.vacation_quota || 0) - Number(quota2.vacation_used || 0)
     }
   };
 
@@ -517,27 +566,53 @@ function getBalance(payload) {
   return {
     ok: true,
     employee: {
-      id: emp.employee_id,
-      name: emp.display_name,
+      id:         emp.employee_id,
+      name:       emp.display_name,
       department: emp.department,
-      position: emp.position
+      position:   emp.position,
+      payType:    payType
     },
     period: period,
     workDays: workDays,
+    totalWorkingDays: totalWorkingDaysInPeriod,
     otHours: otHours,
-    basePay: Math.round(basePay),
-    otPay: Math.round(otPay),
-    bonus: bonus,
-    deduction: deduction,
-    estimateTotal: Math.round(estimateTotal),
-    leaveBalance: leaveBalance,
-    pending: { leaves: pendingLeaves, ot: pendingOT },
+    basePay:          Math.round(basePay),
+    dailyRate:        Math.round(dailyRate),
+    leaveDeduction:   leaveDeduction,
+    absentDeduction:  absentDeduction,
+    otPay:            Math.round(otPay),
+    mealAllowance:    mealAllowance,
+    travelAllowance:  travelAllowance,
+    bonus:            bonus,
+    deduction:        deduction,
+    estimateTotal:    estimateTotal,
+    leaveBalance:     leaveBalance,
+    pending:          { leaves: pendingLeaves, ot: pendingOT },
     lastPayment: lastPayment ? {
       period: lastPayment.period,
-      total: lastPayment.total_amount,
+      total:  lastPayment.total_amount,
       status: lastPayment.status
     } : null
   };
+}
+
+// นับวันลาที่อนุมัติแล้วในงวดนั้น (สำหรับคำนวณขาดงาน)
+function countApprovedLeaveDays(employeeId, period) {
+  const leaves = filterRows(SHEETS.LEAVES.name, function(r) {
+    return r.employee_id === employeeId
+      && r.status === 'approved';
+  });
+  let total = 0;
+  leaves.forEach(function(lv) {
+    // นับวันทำงานจริงในช่วงลา ที่ตกอยู่ในงวดนี้
+    const s = new Date(lv.start_date);
+    const e = new Date(lv.end_date || lv.start_date);
+    for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+      const ds = formatDate(d);
+      if (ds.indexOf(period) === 0 && isWorkingDay(ds)) total++;
+    }
+  });
+  return total;
 }
 
 function currentPeriod() {
@@ -806,7 +881,7 @@ function closePeriod(payload) {
   if (!isOwner(payload.lineUserId)) return { ok: false, error: 'forbidden' };
   const period = payload.period || currentPeriod();
 
-  // Check pending
+  // === ตรวจ pending ===
   const pendingLeaves = filterRows(SHEETS.LEAVES.name, function(r) {
     return String(r.status).indexOf('pending') === 0;
   });
@@ -824,61 +899,126 @@ function closePeriod(payload) {
     };
   }
 
-  // Process each employee
+  // === คำนวณวันทำงานในงวด ===
+  const year  = parseInt(period.split('-')[0], 10);
+  const month = parseInt(period.split('-')[1], 10) - 1;
+  const periodStart = new Date(year, month, 1);
+  const periodEnd   = new Date(year, month + 1, 0);
+  const totalWorkingDaysInPeriod = countWorkingDays(periodStart, periodEnd);
+
   const employees = getActiveEmployees();
-  const config = getConfig();
-  const results = [];
+  const config    = getConfig();
+  const results   = [];
 
   employees.forEach(function(emp) {
-    const workDays = countApprovedWorkDays(emp.employee_id, period);
-    const otHours = sumApprovedOT(emp.employee_id, period);
-    const dailyRate = Number(emp.base_pay_monthly || 0) / 22;
-    const otRate = Number(emp.ot_rate_per_hour || 0);
-    const basePay = workDays * dailyRate;
-    const otPay = otHours * otRate * config.ot_rate_multiplier;
-    const bonus = sumPayItems(emp.employee_id, period, 'bonus');
-    const deduction = sumPayItems(emp.employee_id, period, 'deduction');
-    const total = Math.round(basePay + otPay + bonus - deduction);
-
-    // Check if already closed
+    // === Skip ถ้าปิดงวดไปแล้ว ===
     const existing = findRow(SHEETS.PAYMENTS.name, function(r) {
       return r.employee_id === emp.employee_id && r.period === period;
     });
-
     if (existing) {
       results.push({ employee: emp.display_name, skipped: true, reason: 'already_closed' });
       return;
     }
 
+    const payType  = emp.pay_type || 'monthly';
+    const workDays = countApprovedWorkDays(emp.employee_id, period);
+    const otHours  = sumApprovedOT(emp.employee_id, period);
+    const otRate   = Number(emp.ot_rate_per_hour || 0);
+    const otPay    = Math.round(otHours * otRate * (config.ot_rate_multiplier || 1.5));
+
+    // === Base pay + deductions ===
+    let basePay        = 0;
+    let dailyRate      = 0;
+    let leaveDeduction = 0;
+    let absentDeduction= 0;
+
+    if (payType === 'daily') {
+      dailyRate = Number(emp.daily_rate || 0);
+      basePay   = Math.round(workDays * dailyRate);
+    } else {
+      basePay   = Number(emp.base_pay_monthly || 0);
+      dailyRate = totalWorkingDaysInPeriod > 0
+        ? basePay / totalWorkingDaysInPeriod
+        : basePay / 22;
+
+      // หักลาเกินโควต้า
+      const quota    = getLeaveQuota(emp.employee_id, year) || {};
+      const sickOver = Math.max(0, Number(quota.sick_used    || 0) - Number(quota.sick_quota    || 0));
+      const persOver = Math.max(0, Number(quota.personal_used|| 0) - Number(quota.personal_quota|| 0));
+      leaveDeduction = Math.round((sickOver + persOver) * dailyRate);
+
+      // หักขาดงาน
+      const approvedLeaveDays = countApprovedLeaveDays(emp.employee_id, period);
+      const absentDays = Math.max(0, totalWorkingDaysInPeriod - workDays - approvedLeaveDays);
+      absentDeduction  = Math.round(absentDays * dailyRate);
+    }
+
+    // === Allowances ===
+    const MEAL_PER_DAY   = 50;
+    const TRAVEL_PER_DAY = 50;
+    const mealAllowance   = workDays * MEAL_PER_DAY;
+    const travelAllowance = workDays * TRAVEL_PER_DAY;
+
+    // === Bonus/deduction จาก PayItems (เบี้ยขยัน, ค่าครองชีพ ฯลฯ) ===
+    const bonus     = sumPayItems(emp.employee_id, period, 'bonus');
+    const deduction = sumPayItems(emp.employee_id, period, 'deduction');
+
+    // === Total ===
+    const total = Math.round(
+      basePay
+      - leaveDeduction
+      - absentDeduction
+      + otPay
+      + mealAllowance
+      + travelAllowance
+      + bonus
+      - deduction
+    );
+
     const paymentId = nextPaymentId(period);
     insertPayment({
-      payment_id: paymentId,
-      employee_id: emp.employee_id,
-      period: period,
-      work_days: workDays,
-      ot_hours: otHours,
-      base_pay: Math.round(basePay),
-      ot_pay: Math.round(otPay),
-      bonus: bonus,
-      deduction: deduction,
-      total_amount: total,
-      status: 'รอจ่าย',
-      closed_at: nowBangkok(),
-      paid_at: '',
-      note: ''
+      payment_id:          paymentId,
+      employee_id:         emp.employee_id,
+      period:              period,
+      pay_type:            payType,
+      work_days:           workDays,
+      total_working_days:  totalWorkingDaysInPeriod,
+      ot_hours:            otHours,
+      base_pay:            basePay,
+      ot_pay:              otPay,
+      meal_allowance:      mealAllowance,
+      travel_allowance:    travelAllowance,
+      leave_deduction:     leaveDeduction,
+      absent_deduction:    absentDeduction,
+      bonus:               bonus,
+      deduction:           deduction,
+      total_amount:        total,
+      status:              'รอจ่าย',
+      closed_at:           nowBangkok(),
+      paid_at:             '',
+      note:                ''
     });
 
     results.push({
-      employee: emp.display_name,
-      total: total,
-      paymentId: paymentId
+      employee:  emp.display_name,
+      payType:   payType,
+      workDays:  workDays,
+      total:     total,
+      paymentId: paymentId,
+      leaveDeduction:  leaveDeduction,
+      absentDeduction: absentDeduction
     });
   });
 
-  // Send summary
+  // === Summary message ===
   const summaryLines = results.map(function(r) {
-    if (r.skipped) return '  - ' + r.employee + ' (' + r.reason + ')';
-    return '  ' + r.employee + ': ' + (r.total || 0).toLocaleString() + ' บาท';
+    if (r.skipped) return '  - ' + r.employee + ' (ปิดแล้ว)';
+    const tag = r.payType === 'daily' ? '💼' : '📅';
+    let line = '  ' + tag + ' ' + r.employee + ': ' + (r.total || 0).toLocaleString() + ' บาท';
+    if (r.workDays !== undefined) line += ' (' + r.workDays + ' วัน)';
+    if (r.leaveDeduction > 0)  line += ' [หักลา -' + r.leaveDeduction.toLocaleString() + ']';
+    if (r.absentDeduction > 0) line += ' [หักขาด -' + r.absentDeduction.toLocaleString() + ']';
+    return line;
   });
   const totalSum = results.reduce(function(s, r) { return s + (r.total || 0); }, 0);
 
@@ -891,7 +1031,7 @@ function closePeriod(payload) {
           'หลังโอนเงินแล้ว กดเปลี่ยนสถานะ "จ่ายแล้ว" ใน Sheet Payments'
   }]);
 
-  return { ok: true, period: period, count: results.length, totalSum: totalSum };
+  return { ok: true, period: period, count: results.filter(function(r) { return !r.skipped; }).length, totalSum: totalSum, results: results };
 }
 
 function markPaid(payload) {

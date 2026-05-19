@@ -52,6 +52,13 @@
   .btn-secondary {
     background: #fff; color: #D4550A; border: 2px solid #D4550A;
   }
+  .btn-small {
+    flex: 1; padding: 8px 4px; font-size: 13px; margin-bottom: 0; width: auto;
+  }
+  .btn-blue {
+    background: #1565C0;
+  }
+  .btn-blue:hover { background: #1044A0; }
 
   .modal-bg {
     display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
@@ -96,11 +103,41 @@
   </div>
 
   <div class="panel" id="panel-payitems">
-    <button class="btn" id="btnAddPayItem"><span class="btn-text">+ เพิ่มรายการ</span><span class="btn-en">Add Item</span></button>
     <div class="field">
-      <label>งวด</label>
+      <label>งวด<div style="font-size:9px;color:#AAA;margin-top:2px;">Period</div></label>
       <input type="month" id="payPeriod">
     </div>
+
+    <!-- Quick buttons: เบี้ยขยัน -->
+    <div style="background:#FFF3E6;border-radius:10px;padding:12px;margin-bottom:10px;">
+      <div style="font-size:13px;font-weight:700;color:#D4550A;margin-bottom:8px;">⭐ เบี้ยขยัน (ไม่ขาด/ลา/สาย)</div>
+      <div style="font-size:10px;color:#AAA;margin-bottom:8px;">Diligence Allowance — เลือกพนักงานก่อน แล้วกดจำนวน</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <select id="diligenceEmpId" style="flex:1;padding:8px;border:1px solid #E0D0C0;border-radius:8px;font-size:13px;"></select>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-small" onclick="addDiligence(500)">฿500</button>
+        <button class="btn btn-small" onclick="addDiligence(800)">฿800</button>
+        <button class="btn btn-small" onclick="addDiligence(1000)">฿1,000</button>
+      </div>
+    </div>
+
+    <!-- Quick buttons: ค่าครองชีพ -->
+    <div style="background:#F0F8FF;border-radius:10px;padding:12px;margin-bottom:10px;">
+      <div style="font-size:13px;font-weight:700;color:#1565C0;margin-bottom:8px;">🏠 ค่าครองชีพ (900 บาท/ครึ่งเดือน)</div>
+      <div style="font-size:10px;color:#AAA;margin-bottom:8px;">Cost of Living Allowance — ครึ่งแรก (วันที่ 1-15) / ครึ่งหลัง (วันที่ 16-สิ้นเดือน)</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <select id="livingEmpId" style="flex:1;padding:8px;border:1px solid #C0D8F0;border-radius:8px;font-size:13px;"></select>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-small btn-blue" onclick="addLiving('first')">ครึ่งแรก ฿900</button>
+        <button class="btn btn-small btn-blue" onclick="addLiving('second')">ครึ่งหลัง ฿900</button>
+        <button class="btn btn-small btn-blue" onclick="addLiving('both')">ทั้งคู่ ฿1,800</button>
+      </div>
+    </div>
+
+    <!-- ปุ่มเพิ่มรายการทั่วไป -->
+    <button class="btn btn-secondary" id="btnAddPayItem" style="margin-bottom:10px;"><span class="btn-text">+ เพิ่มรายการอื่นๆ</span><span class="btn-en">Add Custom Item</span></button>
     <div id="payList" class="loading-state">เลือกงวดก่อน...<div style="font-size:9px;opacity:0.7;margin-top:3px;">Select Period First</div></div>
   </div>
 
@@ -132,7 +169,15 @@
     <div class="field"><label>เบอร์โทร</label><input id="empPhone"></div>
     <div class="field"><label>แผนก</label><input id="empDept"></div>
     <div class="field"><label>ตำแหน่ง</label><input id="empPosition"></div>
-    <div class="field"><label>ค่าจ้าง/เดือน</label><input id="empBasePay" type="number"></div>
+    <div class="field">
+      <label>ประเภทพนักงาน<div style="font-size:9px;color:#AAA;margin-top:2px;">Pay Type</div></label>
+      <select id="empPayType" style="width:100%;padding:10px;border:1px solid #E0D0C0;border-radius:8px;font-size:14px;">
+        <option value="monthly">รายเดือน (Monthly)</option>
+        <option value="daily">รายวัน (Daily)</option>
+      </select>
+    </div>
+    <div class="field"><label>เงินเดือน/เดือน (รายเดือน)<div style="font-size:9px;color:#AAA;margin-top:2px;">Monthly Salary</div></label><input id="empBasePay" type="number"></div>
+    <div class="field"><label>อัตราค่าจ้าง/วัน (รายวัน)<div style="font-size:9px;color:#AAA;margin-top:2px;">Daily Rate</div></label><input id="empDailyRate" type="number"></div>
     <div class="field"><label>ค่า OT/ชม.</label><input id="empOtRate" type="number"></div>
     <div class="field"><label>ผู้อนุมัติ L1</label><select id="empApprover1"></select></div>
     <div class="field"><label>ผู้อนุมัติ L2</label><select id="empApprover2"></select></div>
@@ -209,6 +254,7 @@ if (t.dataset.tab === 'leaves') loadLeaves('all');
     if (!r.ok) { document.getElementById('empList').textContent = 'Error: ' + r.error; return; }
     employeesCache = r.employees;
     renderEmployees();
+    populatePayItemEmpDropdowns();
   }
 
   function renderEmployees() {
@@ -222,6 +268,7 @@ if (t.dataset.tab === 'leaves') loadLeaves('all');
       item.innerHTML =
         '<div class="name">' + emp.display_name + ' (' + emp.employee_id + ')</div>' +
         '<div class="meta">' + (emp.department || '-') + ' · ' + (emp.position || '-') +
+        ' · ' + (emp.pay_type === 'daily' ? '💼รายวัน' : '📅รายเดือน') +
         ' · ' + (emp.is_active ? getText('HR_STATUS.active', 'th') : getText('HR_STATUS.inactive', 'th')) + '</div>';
       item.onclick = function() { openEmpModal(emp); };
       el.appendChild(item);
@@ -235,7 +282,9 @@ if (t.dataset.tab === 'leaves') loadLeaves('all');
     document.getElementById('empPhone').value = emp.phone || '';
     document.getElementById('empDept').value = emp.department || '';
     document.getElementById('empPosition').value = emp.position || '';
+    document.getElementById('empPayType').value = emp.pay_type || 'monthly';
     document.getElementById('empBasePay').value = emp.base_pay_monthly || 0;
+    document.getElementById('empDailyRate').value = emp.daily_rate || 0;
     document.getElementById('empOtRate').value = emp.ot_rate_per_hour || 0;
 
     // Populate approver selects
@@ -262,7 +311,9 @@ if (t.dataset.tab === 'leaves') loadLeaves('all');
       phone: document.getElementById('empPhone').value,
       department: document.getElementById('empDept').value,
       position: document.getElementById('empPosition').value,
+      pay_type: document.getElementById('empPayType').value,
       base_pay_monthly: Number(document.getElementById('empBasePay').value || 0),
+      daily_rate: Number(document.getElementById('empDailyRate').value || 0),
       ot_rate_per_hour: Number(document.getElementById('empOtRate').value || 0),
       approver_L1_id: document.getElementById('empApprover1').value,
       approver_L2_id: document.getElementById('empApprover2').value,
@@ -281,6 +332,49 @@ if (t.dataset.tab === 'leaves') loadLeaves('all');
 
   // ==================== PAY ITEMS ====================
   document.getElementById('payPeriod').onchange = loadPayItems;
+
+  // เติม dropdown เลือกพนักงานใน Pay Items panel
+  function populatePayItemEmpDropdowns() {
+    ['diligenceEmpId', 'livingEmpId'].forEach(function(id) {
+      const sel = document.getElementById(id);
+      sel.innerHTML = '<option value="">-- เลือกพนักงาน --</option>';
+      (employeesCache || []).forEach(function(e) {
+        const opt = document.createElement('option');
+        opt.value = e.employee_id;
+        opt.textContent = e.display_name + ' (' + e.employee_id + ')';
+        sel.appendChild(opt);
+      });
+    });
+  }
+
+  async function addDiligence(amount) {
+    const empId = document.getElementById('diligenceEmpId').value;
+    const period = document.getElementById('payPeriod').value;
+    if (!empId) { alert('กรุณาเลือกพนักงานก่อน'); return; }
+    if (!period) { alert('กรุณาเลือกงวดก่อน'); return; }
+    if (!confirm('เพิ่มเบี้ยขยัน ฿' + amount.toLocaleString() + ' ให้ ' + empId + ' งวด ' + period + '?')) return;
+    const r = await api('hr_add_payitem', {
+      item: { employee_id: empId, period: period, type: 'bonus', amount: amount, reason: 'เบี้ยขยัน' }
+    });
+    if (r.ok) { alert('เพิ่มเบี้ยขยัน ฿' + amount + ' สำเร็จ'); loadPayItems(); }
+    else alert('Error: ' + r.error);
+  }
+
+  async function addLiving(half) {
+    const empId = document.getElementById('livingEmpId').value;
+    const period = document.getElementById('payPeriod').value;
+    if (!empId) { alert('กรุณาเลือกพนักงานก่อน'); return; }
+    if (!period) { alert('กรุณาเลือกงวดก่อน'); return; }
+    const label = half === 'first' ? 'ค่าครองชีพครึ่งแรก' : half === 'second' ? 'ค่าครองชีพครึ่งหลัง' : 'ค่าครองชีพทั้งเดือน';
+    const amt   = half === 'both' ? 1800 : 900;
+    if (!confirm('เพิ่ม' + label + ' ฿' + amt + ' ให้ ' + empId + ' งวด ' + period + '?')) return;
+    const r = await api('hr_add_payitem', {
+      item: { employee_id: empId, period: period, type: 'bonus', amount: amt, reason: label }
+    });
+    if (r.ok) { alert('เพิ่ม' + label + ' ฿' + amt + ' สำเร็จ'); loadPayItems(); }
+    else alert('Error: ' + r.error);
+  }
+
   async function loadPayItems() {
     const period = document.getElementById('payPeriod').value;
     if (!period) return;
@@ -340,20 +434,50 @@ if (t.dataset.tab === 'leaves') loadLeaves('all');
 
   document.getElementById('btnClosePeriod').onclick = async function() {
     const period = document.getElementById('reportPeriod').value;
-    if (!confirm('ยืนยันการปิดงวด ' + period + ' ?\n\nระบบจะคำนวณยอดและสร้าง Payment records')) return;
+    if (!period) { alert('กรุณาเลือกงวดก่อน'); return; }
+    if (!confirm('ยืนยันการปิดงวด ' + period + ' ?\n\nระบบจะคำนวณยอดรวม:\n• ค่าจ้าง (ตามประเภทพนักงาน)\n• ค่าอาหาร + ค่าเดินทาง\n• หักลาเกินสิทธิ์ / ขาดงาน\n• เบี้ยขยัน / ค่าครองชีพ (จาก PayItems)')) return;
     const r = await api('close_period', { period: period });
     if (r.ok) {
-      alert('ปิดงวดเรียบร้อย\n' + r.count + ' รายการ\nรวม ' + Number(r.totalSum).toLocaleString() + ' บาท');
+      renderCloseResult(r, period);
     } else if (r.error === 'has_pending') {
-      if (confirm('มีคำขอค้าง: ' + r.pendingLeaves + ' ลา + ' + r.pendingOT + ' OT\n\nต้องการปิดงวดต่อ?')) {
+      if (confirm('⚠️ มีคำขอค้างอยู่:\n  ลา ' + r.pendingLeaves + ' รายการ\n  OT ' + r.pendingOT + ' รายการ\n\nต้องการปิดงวดโดยข้ามคำขอที่ค้างอยู่?')) {
         const r2 = await api('close_period', { period: period, force: true });
-        if (r2.ok) alert('ปิดงวดเรียบร้อย (force)');
+        if (r2.ok) renderCloseResult(r2, period);
         else alert('Error: ' + r2.error);
       }
     } else {
       alert('Error: ' + r.error);
     }
   };
+
+  function renderCloseResult(r, period) {
+    const el = document.getElementById('reportList');
+    el.className = '';
+    const rows = (r.results || []).map(function(row) {
+      if (row.skipped) {
+        return '<div class="card" style="opacity:0.5">' +
+          '<div class="row"><span class="lab">👤 ' + row.employee + '</span><span style="color:#999">ปิดแล้ว</span></div>' +
+          '</div>';
+      }
+      const tag = row.payType === 'daily' ? '💼 รายวัน' : '📅 รายเดือน';
+      let deductHtml = '';
+      if (row.leaveDeduction  > 0) deductHtml += '<div class="row"><span class="lab" style="padding-left:12px;color:#B23A3A">หักลาเกินสิทธิ์</span><span style="color:#B23A3A">-฿' + row.leaveDeduction.toLocaleString()  + '</span></div>';
+      if (row.absentDeduction > 0) deductHtml += '<div class="row"><span class="lab" style="padding-left:12px;color:#B23A3A">หักขาดงาน</span><span style="color:#B23A3A">-฿' + row.absentDeduction.toLocaleString() + '</span></div>';
+      return '<div class="card">' +
+        '<div class="row"><span class="lab"><b>' + row.employee + '</b></span><span style="font-size:11px;color:#888">' + tag + '</span></div>' +
+        '<div class="row"><span class="lab" style="padding-left:12px">วันทำงาน</span><span>' + (row.workDays || 0) + ' วัน</span></div>' +
+        deductHtml +
+        '<div class="row"><span class="lab"><b>ยอดรวม</b></span><span style="font-weight:800;color:#D4550A">฿' + (row.total || 0).toLocaleString() + '</span></div>' +
+        '<div style="font-size:10px;color:#AAA;margin-top:4px;">ID: ' + row.paymentId + '</div>' +
+        '</div>';
+    }).join('');
+
+    el.innerHTML =
+      '<div style="background:#E8F5E9;border-radius:10px;padding:14px;margin-bottom:12px;">' +
+        '<div style="font-size:15px;font-weight:800;color:#2E7D32;">✅ ปิดงวด ' + period + ' เรียบร้อย</div>' +
+        '<div style="font-size:13px;color:#1B5E20;margin-top:4px;">' + r.count + ' รายการ · รวม ฿' + Number(r.totalSum || 0).toLocaleString() + ' บาท</div>' +
+      '</div>' + rows;
+  }
 // ==================== QUOTA ====================
 document.getElementById('quotaYear').onchange = loadQuota;
 

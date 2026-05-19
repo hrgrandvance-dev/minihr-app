@@ -215,7 +215,7 @@ const SHEETS = {
     name: 'Employees',
     columns: [
       'employee_id', 'line_user_id', 'display_name', 'phone', 'email',
-      'department', 'position', 'base_pay_monthly', 'ot_rate_per_hour',
+      'department', 'position', 'pay_type', 'base_pay_monthly', 'daily_rate', 'ot_rate_per_hour',
       'bank_name', 'bank_account_no', 'bank_account_name',
       'selfie_url', 'id_card_url',
       'approver_L1_id', 'approver_L2_id', 'approver_L3_id',
@@ -250,8 +250,11 @@ const SHEETS = {
   PAYMENTS: {
     name: 'Payments',
     columns: [
-      'payment_id', 'employee_id', 'period', 'work_days', 'ot_hours',
-      'base_pay', 'ot_pay', 'bonus', 'deduction', 'total_amount',
+      'payment_id', 'employee_id', 'period', 'pay_type', 'work_days', 'total_working_days', 'ot_hours',
+      'base_pay', 'ot_pay',
+      'meal_allowance', 'travel_allowance',
+      'leave_deduction', 'absent_deduction',
+      'bonus', 'deduction', 'total_amount',
       'status', 'closed_at', 'paid_at', 'note'
     ]
   },
