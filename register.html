@@ -270,11 +270,14 @@ document.getElementById('btnSubmit').addEventListener('click', async function() 
   showStatus('⏳ กำลังส่งข้อมูล อาจใช้เวลา 30-60 วินาที...', 'loading');
   document.getElementById('btnSubmit').disabled = true;
 
+  let phoneVal = document.getElementById('phone').value.trim();
+  if (phoneVal && !phoneVal.startsWith('0')) phoneVal = '0' + phoneVal;
+
   const payload = {
     action:          'register',
     lineUserId:      userId,
     displayName:     document.getElementById('displayName').value.trim(),
-    phone:           document.getElementById('phone').value.trim(),
+    phone:           phoneVal,
     email:           document.getElementById('email').value.trim(),
     department:      document.getElementById('department').value.trim(),
     position:        document.getElementById('position').value.trim(),

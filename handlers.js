@@ -13,7 +13,8 @@ function getOrCreateSubfolder(parent, name) {
 function register(payload) {
   const lineUserId = payload.lineUserId;
   const displayName = payload.displayName;
-  const phone = payload.phone;
+  let phone = String(payload.phone || '').trim();
+  if (phone && !phone.startsWith('0')) phone = '0' + phone;
   const email = payload.email || '';
   const department = payload.department || '';
   const position = payload.position || '';
