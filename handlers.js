@@ -1034,22 +1034,27 @@ function checkin(payload) {
   }
 
   // === Send confirmation message to employee ===
+  // ดึง checkins หลัง insert แล้ว เพื่อให้ได้ข้อมูลล่าสุดครบถ้วน
   const todayCheckins = getTodayCheckins(emp.employee_id);
-  const inCheckin = todayCheckins.find(c => c.slot === 'IN');
-  const outCheckin = todayCheckins.find(c => c.slot === 'OUT');
-  
-  let confirmMsg = '';
-  if (inCheckin) {
-    const inTime = inCheckin.checkin_at ? inCheckin.checkin_at.substring(11, 16) : 'N/A'; // extract HH:MM
-    confirmMsg = '✅ Checkin - ' + inTime;
+  const inCheckin = todayCheckins.find(function(c) { return c.slot === 'IN'; });
+  const outCheckin = todayCheckins.find(function(c) { return c.slot === 'OUT'; });
+
+  // helper: แปลง "YYYY-MM-DD HH:MM:SS" หรือ ISO string → "HH:MM"
+  function extractHHMM(datetimeStr) {
+    if (!datetimeStr) return 'N/A';
+    // รองรับทั้ง "2025-05-19 09:00:00" และ "2025-05-19T09:00:00"
+    var timePart = String(datetimeStr).replace('T', ' ').substring(11, 16);
+    return timePart || 'N/A';
   }
-  if (outCheckin) {
-    const outTime = outCheckin.checkin_at ? outCheckin.checkin_at.substring(11, 16) : 'N/A';
-    confirmMsg = (confirmMsg ? confirmMsg + ', Checkout - ' + outTime : '✅ Checkout - ' + outTime);
-  } else if (inCheckin) {
-    confirmMsg = confirmMsg; // just show checkin for now
+
+  var confirmMsg = '';
+
+  if (slot === 'IN' && inCheckin) {
+    confirmMsg = '🟢 Check in  - ' + extractHHMM(inCheckin.checkin_at);
+  } else if (slot === 'OUT' && outCheckin) {
+    confirmMsg = '🔴 Check out - ' + extractHHMM(outCheckin.checkin_at);
   }
-  
+
   if (confirmMsg) {
     pushMessage(emp.line_user_id, [{
       type: 'text',
