@@ -300,7 +300,7 @@ function finalizeApproval(record, type, employee, history, sheetName, idField) {
   const typeLabel = type === 'leave' ? 'ใบลา' : 'OT';
   pushMessage(employee.line_user_id, [{
     type: 'text',
-    text: '🎉 คำขอ' + typeLabel + ' ' + record[idField] + ' ได้รับอนุมัติแล้ว!\n' +
+    text: '🎉 คำขอ' + typeLabel + ' ' + record[idField] + ' ได้รับอนุมัติแล้ว!\n\n' +
           '🎉 Your ' + (type === 'leave' ? 'Leave' : 'OT') + ' request ' + record[idField] + ' has been approved!'
   }]);
 }
@@ -328,7 +328,7 @@ function doReject(record, type, level, approver, replyToken) {
   const typeLabel = type === 'leave' ? 'ใบลา' : 'OT';
   pushMessage(employee.line_user_id, [{
     type: 'text',
-    text: '❌ คำขอ' + typeLabel + ' ' + record[idField] + ' ถูกปฏิเสธในขั้น ' + level + '\n' +
+    text: '❌ คำขอ' + typeLabel + ' ' + record[idField] + ' ถูกปฏิเสธในขั้น ' + level + '\n\n' +
           '❌ Your ' + (type === 'leave' ? 'Leave' : 'OT') + ' request ' + record[idField] + ' was rejected at level ' + level + '.'
   }]);
 
@@ -373,8 +373,9 @@ function doNeedInfo(record, type, level, approver, replyToken) {
   pushMessage(employee.line_user_id, [{
     type: 'text',
     text: 'ℹ️ ผู้อนุมัติขอข้อมูลเพิ่มเติมสำหรับคำขอ ' + record[idField] + '\n' +
-          'ℹ️ The approver has requested additional information for request ' + record[idField] + '\n\n' +
-          'กรุณาคลิกลิงก์เพื่อแนบหลักฐาน / Please click the link to attach evidence:\n' + liffUrl
+          'กรุณาคลิกลิงก์เพื่อแนบหลักฐาน:\n' + liffUrl + '\n\n' +
+          'ℹ️ The approver has requested additional information for request ' + record[idField] + '\n' +
+          'Please click the link to attach evidence:\n' + liffUrl
   }]);
 
   if (replyToken) replyMessage(replyToken, [{
@@ -752,9 +753,11 @@ function submitEvidence(payload) {
     pushMessage(approver.line_user_id, [{
       type: 'text',
       text: '📎 ' + emp.display_name + ' ส่งหลักฐานเพิ่มสำหรับ ' + recordId + ' แล้ว\n' +
-            '📎 ' + emp.display_name + ' has submitted additional evidence for ' + recordId + '\n\n' +
-            'หมายเหตุ / Note: ' + (note || '-') + '\n' +
-            'ดูหลักฐาน / View Evidence: ' + evidenceUrl
+            'หมายเหตุ: ' + (note || '-') + '\n' +
+            'ดูหลักฐาน: ' + evidenceUrl + '\n\n' +
+            '📎 ' + emp.display_name + ' has submitted additional evidence for ' + recordId + '\n' +
+            'Note: ' + (note || '-') + '\n' +
+            'View Evidence: ' + evidenceUrl
     }]);
   }
 
@@ -872,11 +875,14 @@ function hrDeactivateEmployee(payload) {
     try {
       pushMessage(emp.line_user_id, [{
         type: 'text',
-        text: 'แจ้งจากระบบ Mini HR / Mini HR System Notification\n\n' +
+        text: 'แจ้งจากระบบ Mini HR\n' +
               'บัญชีของคุณถูกปิดการใช้งานแล้ว\n' +
+              'เหตุผล: ' + reason + '\n' +
+              'หากมีข้อสงสัยกรุณาติดต่อ HR โดยตรง\n\n' +
+              'Mini HR System Notification\n' +
               'Your account has been deactivated.\n' +
-              'เหตุผล / Reason: ' + reason + '\n\n' +
-              'หากมีข้อสงสัยกรุณาติดต่อ HR โดยตรง / Please contact HR directly if you have any questions.'
+              'Reason: ' + reason + '\n' +
+              'Please contact HR directly if you have any questions.'
       }]);
     } catch (e) {
       logWarn('hrDeactivateEmployee', 'notify_failed', { empId: employeeId, err: e.message });
@@ -1201,8 +1207,9 @@ function markPaid(payload) {
       pushMessage(emp.line_user_id, [{
         type: 'text',
         text: '💵 เงินเดือนงวด ' + payment.period + ' โอนเข้าบัญชีคุณแล้ว\n' +
+              'จำนวน: ' + Number(payment.total_amount).toLocaleString() + ' บาท\n\n' +
               '💵 Your salary for period ' + payment.period + ' has been transferred to your account.\n' +
-              'จำนวน / Amount: ' + Number(payment.total_amount).toLocaleString() + ' บาท (THB)'
+              'Amount: ' + Number(payment.total_amount).toLocaleString() + ' THB'
       }]);
     }
   }
@@ -1571,12 +1578,16 @@ function submitLeave(payload) {
   // === Confirm to employee ===
   pushMessage(lineUserId, [{
     type: 'text',
-    text: '📝 ส่งใบลาเรียบร้อย / Leave Request Submitted\n' +
-          'รหัส / ID: ' + leaveId + '\n' +
-          'ประเภท / Type: ' + thaiLeaveType(leaveType) + '\n' +
-          'จำนวน / Duration: ' + totalDays + ' วัน (day(s))\n' +
-          'สถานะ / Status: รอ ' + (approver ? approver.display_name : 'ผู้อนุมัติ') + ' อนุมัติ (L1)\n' +
-          'Pending approval from ' + (approver ? approver.display_name : 'approver') + ' (L1)'
+    text: '📝 ส่งใบลาเรียบร้อย\n' +
+          'รหัส: ' + leaveId + '\n' +
+          'ประเภท: ' + thaiLeaveType(leaveType) + '\n' +
+          'จำนวน: ' + totalDays + ' วัน\n' +
+          'สถานะ: รอ ' + (approver ? approver.display_name : 'ผู้อนุมัติ') + ' อนุมัติ (L1)\n\n' +
+          'Leave Request Submitted\n' +
+          'ID: ' + leaveId + '\n' +
+          'Type: ' + thaiLeaveType(leaveType) + '\n' +
+          'Duration: ' + totalDays + ' day(s)\n' +
+          'Status: Pending approval from ' + (approver ? approver.display_name : 'approver') + ' (L1)'
   }]);
 
   logUserAction('submitLeave', lineUserId, 'success', { leaveId, leaveType, totalDays });
@@ -1638,10 +1649,13 @@ function cancelLeave(payload) {
     pushMessage(leaveEmp.line_user_id, [{
       type: 'text',
       text: '🚫 ใบลา ' + leaveId + ' ถูกยกเลิกแล้ว\n' +
+            'ประเภท: ' + thaiLeaveType(leave.leave_type) + '\n' +
+            'จำนวน: ' + leave.total_days + ' วัน' +
+            (wasApproved ? '\n✅ คืนโควต้าแล้ว' : '') + '\n\n' +
             '🚫 Leave request ' + leaveId + ' has been cancelled.\n' +
-            'ประเภท / Type: ' + thaiLeaveType(leave.leave_type) + '\n' +
-            'จำนวน / Duration: ' + leave.total_days + ' วัน (day(s))' +
-            (wasApproved ? '\n✅ คืนโควต้าแล้ว / Leave quota restored: ' + leave.total_days + ' วัน (day(s))' : '')
+            'Type: ' + thaiLeaveType(leave.leave_type) + '\n' +
+            'Duration: ' + leave.total_days + ' day(s)' +
+            (wasApproved ? '\n✅ Leave quota restored: ' + leave.total_days + ' day(s)' : '')
     }]);
   }
 
@@ -1723,12 +1737,18 @@ function submitOT(payload) {
 
   pushMessage(lineUserId, [{
     type: 'text',
-    text: '⏱️ ส่งคำขอ OT เรียบร้อย / OT Request Submitted\n' +
-          'รหัส / ID: ' + otId + '\n' +
-          'วัน / Date: ' + otDate + ' เวลา / Time: ' + startTime + '-' + endTime + '\n' +
-          'รวม / Total: ' + totalHours + ' ชั่วโมง (hour(s))\n' +
-          'สถานะ / Status: รอ ' + (approver ? approver.display_name : 'ผู้อนุมัติ') + ' อนุมัติ\n' +
-          'Pending approval from ' + (approver ? approver.display_name : 'approver')
+    text: '⏱️ ส่งคำขอ OT เรียบร้อย\n' +
+          'รหัส: ' + otId + '\n' +
+          'วัน: ' + otDate + '\n' +
+          'เวลา: ' + startTime + '-' + endTime + '\n' +
+          'รวม: ' + totalHours + ' ชั่วโมง\n' +
+          'สถานะ: รอ ' + (approver ? approver.display_name : 'ผู้อนุมัติ') + ' อนุมัติ\n\n' +
+          'OT Request Submitted\n' +
+          'ID: ' + otId + '\n' +
+          'Date: ' + otDate + '\n' +
+          'Time: ' + startTime + '-' + endTime + '\n' +
+          'Total: ' + totalHours + ' hour(s)\n' +
+          'Status: Pending approval from ' + (approver ? approver.display_name : 'approver')
   }]);
 
   logUserAction('submitOT', lineUserId, 'success', { otId, totalHours });

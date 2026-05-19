@@ -40,7 +40,7 @@ function biLabel(th, en) {
     flex: 4,
     contents: [
       { type: 'text', text: th, color: COLOR_GRAY, size: 'xs', wrap: false },
-      { type: 'text', text: en, color: '#AAAAAA', size: '3xs', wrap: false }
+      { type: 'text', text: en, color: '#AAAAAA', size: 'xxs', wrap: false }
     ]
   };
 }
@@ -172,7 +172,7 @@ function needInfoButton(action, id, level, type) {
     height: 'sm',
     action: {
       type: 'postback',
-      label: 'ℹ️ ขอข้อมูลเพิ่ม · Need Info',
+      label: 'ℹ️ เพิ่มเติม / Info',
       data: 'action=' + action + '&id=' + id + '&level=' + level + '&type=' + type,
       displayText: 'ขอข้อมูลเพิ่ม · Need Info: ' + id
     }
@@ -240,7 +240,7 @@ function buildLeaveApprovalCard(opts) {
         leave.evidence_url ? {
           type: 'button',
           margin: 'md',
-          action: { type: 'uri', label: '🖼️ ดูหลักฐาน · View Evidence', uri: leave.evidence_url },
+          action: { type: 'uri', label: '🖼️ หลักฐาน/Evidence', uri: leave.evidence_url },
           style: 'secondary',
           height: 'sm'
         } : { type: 'filler' }
@@ -382,7 +382,7 @@ function buildDoneCard(opts) {
         height: 'sm',
         action: {
           type: 'uri',
-          label: '📥 กล่องอนุมัติ · Approval Inbox',
+          label: '📥 Approval Inbox',
           uri: approvalInboxUrl
         }
       }]
