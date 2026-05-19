@@ -108,6 +108,34 @@
       <input type="month" id="payPeriod">
     </div>
 
+    <!-- Quick buttons: หักลางาน -->
+    <div style="background:#FFF0F0;border-radius:10px;padding:12px;margin-bottom:10px;">
+      <div style="font-size:13px;font-weight:700;color:#B23A3A;margin-bottom:8px;">📋 หักลางาน (ลาเกินสิทธิ์)</div>
+      <div style="font-size:10px;color:#AAA;margin-bottom:8px;">Leave Deduction — หักเมื่อพนักงานลาเกินโควต้าสิทธิ์ที่กำหนด</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <select id="leaveDeductEmpId" style="flex:1;padding:8px;border:1px solid #E0C0C0;border-radius:8px;font-size:13px;"></select>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <input type="number" id="leaveDeductDays" placeholder="จำนวนวัน" min="0.5" step="0.5" style="flex:1;padding:8px;border:1px solid #E0C0C0;border-radius:8px;font-size:13px;">
+        <input type="text" id="leaveDeductReason" placeholder="หมายเหตุ (เช่น ลาป่วยเกิน 3 วัน)" style="flex:2;padding:8px;border:1px solid #E0C0C0;border-radius:8px;font-size:13px;">
+      </div>
+      <button class="btn btn-small" style="background:#B23A3A;color:#fff;" onclick="addLeaveDeduction()">➕ เพิ่มรายการหักลางาน</button>
+    </div>
+
+    <!-- Quick buttons: หักขาดงาน -->
+    <div style="background:#FDF0FF;border-radius:10px;padding:12px;margin-bottom:10px;">
+      <div style="font-size:13px;font-weight:700;color:#7B1FA2;margin-bottom:8px;">🚫 หักขาดงาน (ไม่มาโดยไม่ลา)</div>
+      <div style="font-size:10px;color:#AAA;margin-bottom:8px;">Absent Deduction — หักเมื่อพนักงานขาดงานโดยไม่มีใบลาอนุมัติ</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <select id="absentDeductEmpId" style="flex:1;padding:8px;border:1px solid #D0B0E0;border-radius:8px;font-size:13px;"></select>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <input type="number" id="absentDeductDays" placeholder="จำนวนวัน" min="0.5" step="0.5" style="flex:1;padding:8px;border:1px solid #D0B0E0;border-radius:8px;font-size:13px;">
+        <input type="text" id="absentDeductReason" placeholder="หมายเหตุ (เช่น ขาดงาน 19/05/2568)" style="flex:2;padding:8px;border:1px solid #D0B0E0;border-radius:8px;font-size:13px;">
+      </div>
+      <button class="btn btn-small" style="background:#7B1FA2;color:#fff;" onclick="addAbsentDeduction()">➕ เพิ่มรายการหักขาดงาน</button>
+    </div>
+
     <!-- Quick buttons: เบี้ยขยัน -->
     <div style="background:#FFF3E6;border-radius:10px;padding:12px;margin-bottom:10px;">
       <div style="font-size:13px;font-weight:700;color:#D4550A;margin-bottom:8px;">⭐ เบี้ยขยัน (ไม่ขาด/ลา/สาย)</div>
@@ -335,7 +363,7 @@ if (t.dataset.tab === 'leaves') loadLeaves('all');
 
   // เติม dropdown เลือกพนักงานใน Pay Items panel
   function populatePayItemEmpDropdowns() {
-    ['diligenceEmpId', 'livingEmpId'].forEach(function(id) {
+    ['diligenceEmpId', 'livingEmpId', 'leaveDeductEmpId', 'absentDeductEmpId'].forEach(function(id) {
       const sel = document.getElementById(id);
       sel.innerHTML = '<option value="">-- เลือกพนักงาน --</option>';
       (employeesCache || []).forEach(function(e) {
@@ -374,6 +402,48 @@ if (t.dataset.tab === 'leaves') loadLeaves('all');
     if (r.ok) { alert('เพิ่ม' + label + ' ฿' + amt + ' สำเร็จ'); loadPayItems(); }
     else alert('Error: ' + r.error);
   }
+
+  async function addLeaveDeduction() {
+    const empId  = document.getElementById('leaveDeductEmpId').value;
+    const period = document.getElementById('payPeriod').value;
+    const days   = parseFloat(document.getElementById('leaveDeductDays').value);
+    const reason = document.getElementById('leaveDeductReason').value.trim() || 'หักลางานเกินสิทธิ์';
+    if (!empId)         { alert('กรุณาเลือกพนักงานก่อน'); return; }
+    if (!period)        { alert('กรุณาเลือกงวดก่อน'); return; }
+    if (!days || days <= 0) { alert('กรุณาระบุจำนวนวันที่ถูกต้อง'); return; }
+    // ดึงอัตราค่าจ้างรายวันจาก balance เพื่อแสดงตัวเลขในการยืนยัน (ไม่บังคับ)
+    if (!confirm('เพิ่มรายการ "หักลางาน" ' + days + ' วัน ให้ ' + empId + ' งวด ' + period + '\nหมายเหตุ: ' + reason + '\n\nระบบจะใช้อัตราวันละตามฐานเงินเดือน ยืนยัน?')) return;
+    const r = await api('hr_add_payitem', {
+      item: { employee_id: empId, period: period, type: 'leave_deduction', amount: days, reason: reason }
+    });
+    if (r.ok) {
+      alert('เพิ่มรายการหักลางาน ' + days + ' วัน สำเร็จ');
+      document.getElementById('leaveDeductDays').value = '';
+      document.getElementById('leaveDeductReason').value = '';
+      loadPayItems();
+    } else alert('Error: ' + r.error);
+  }
+
+  async function addAbsentDeduction() {
+    const empId  = document.getElementById('absentDeductEmpId').value;
+    const period = document.getElementById('payPeriod').value;
+    const days   = parseFloat(document.getElementById('absentDeductDays').value);
+    const reason = document.getElementById('absentDeductReason').value.trim() || 'หักขาดงาน';
+    if (!empId)         { alert('กรุณาเลือกพนักงานก่อน'); return; }
+    if (!period)        { alert('กรุณาเลือกงวดก่อน'); return; }
+    if (!days || days <= 0) { alert('กรุณาระบุจำนวนวันที่ถูกต้อง'); return; }
+    if (!confirm('เพิ่มรายการ "หักขาดงาน" ' + days + ' วัน ให้ ' + empId + ' งวด ' + period + '\nหมายเหตุ: ' + reason + '\n\nระบบจะใช้อัตราวันละตามฐานเงินเดือน ยืนยัน?')) return;
+    const r = await api('hr_add_payitem', {
+      item: { employee_id: empId, period: period, type: 'absent_deduction', amount: days, reason: reason }
+    });
+    if (r.ok) {
+      alert('เพิ่มรายการหักขาดงาน ' + days + ' วัน สำเร็จ');
+      document.getElementById('absentDeductDays').value = '';
+      document.getElementById('absentDeductReason').value = '';
+      loadPayItems();
+    } else alert('Error: ' + r.error);
+  }
+
 
   async function loadPayItems() {
     const period = document.getElementById('payPeriod').value;

@@ -501,10 +501,9 @@ function getBalance(payload) {
     const persOver  = Math.max(0, Number(quota.personal_used || 0) - Number(quota.personal_quota || 0));
     leaveDeduction  = Math.round((sickOver + persOver) * dailyRate);
 
-    // หักขาดงาน (ไม่ลา ไม่มาเช็คอิน)
-    const approvedLeaveDays = countApprovedLeaveDays(emp.employee_id, period);
-    const absentDays = Math.max(0, totalWorkingDaysInPeriod - workDays - approvedLeaveDays);
-    absentDeduction = Math.round(absentDays * dailyRate);
+    // *** ไม่หักขาดงานอัตโนมัติ — HR เป็นผู้เพิ่มรายการหักเองผ่าน PayItems ***
+    // (เงื่อนไขวันทำงานอาจเปลี่ยนแปลง เช่น เสาร์เว้นเสาร์)
+    absentDeduction = 0;
   }
 
   // === ค่าอาหาร + ค่าเดินทาง (100 บาท/วันมาจริง) ===
@@ -516,6 +515,13 @@ function getBalance(payload) {
   // === Bonus/deduction จาก PayItems (HR บันทึกเอง: เบี้ยขยัน, ค่าครองชีพ ฯลฯ) ===
   const bonus     = sumPayItems(emp.employee_id, period, 'bonus');
   const deduction = sumPayItems(emp.employee_id, period, 'deduction');
+
+  // === หักลางาน/ขาดงานที่ HR เพิ่มเองผ่าน PayItems (คิดจากจำนวนวัน × อัตรารายวัน) ===
+  const leaveDeductFromHR  = sumDeductionPayItems(emp.employee_id, period, 'leave_deduction',  dailyRate);
+  const absentDeductFromHR = sumDeductionPayItems(emp.employee_id, period, 'absent_deduction', dailyRate);
+  // รวม leaveDeduction กับยอดที่ HR เพิ่ม
+  leaveDeduction  = leaveDeduction  + leaveDeductFromHR;
+  absentDeduction = absentDeduction + absentDeductFromHR;
 
   // === รวม estimate ===
   const estimateTotal = Math.round(
@@ -657,6 +663,12 @@ function sumPayItems(employeeId, period, type) {
       && r.type === type;
   });
   return items.reduce(function(s, r) { return s + Number(r.amount || 0); }, 0);
+}
+
+// คำนวณรายการหักลางาน/ขาดงานที่ HR บันทึกเอง (คืนค่าเป็นบาท)
+function sumDeductionPayItems(employeeId, period, type, dailyRate) {
+  const days = sumPayItems(employeeId, period, type);
+  return Math.round(days * dailyRate);
 }
 
 function findLastPayment(employeeId) {
@@ -947,10 +959,8 @@ function closePeriod(payload) {
       const persOver = Math.max(0, Number(quota.personal_used|| 0) - Number(quota.personal_quota|| 0));
       leaveDeduction = Math.round((sickOver + persOver) * dailyRate);
 
-      // หักขาดงาน
-      const approvedLeaveDays = countApprovedLeaveDays(emp.employee_id, period);
-      const absentDays = Math.max(0, totalWorkingDaysInPeriod - workDays - approvedLeaveDays);
-      absentDeduction  = Math.round(absentDays * dailyRate);
+      // *** ไม่หักขาดงานอัตโนมัติ — HR เพิ่มรายการหักเองผ่าน PayItems (เสาร์เว้นเสาร์) ***
+      absentDeduction = 0;
     }
 
     // === Allowances ===
@@ -962,6 +972,10 @@ function closePeriod(payload) {
     // === Bonus/deduction จาก PayItems (เบี้ยขยัน, ค่าครองชีพ ฯลฯ) ===
     const bonus     = sumPayItems(emp.employee_id, period, 'bonus');
     const deduction = sumPayItems(emp.employee_id, period, 'deduction');
+
+    // === หักลา/ขาดงานที่ HR เพิ่มเองผ่าน PayItems ===
+    leaveDeduction  = leaveDeduction  + sumDeductionPayItems(emp.employee_id, period, 'leave_deduction',  dailyRate);
+    absentDeduction = absentDeduction + sumDeductionPayItems(emp.employee_id, period, 'absent_deduction', dailyRate);
 
     // === Total ===
     const total = Math.round(
