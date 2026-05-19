@@ -183,6 +183,186 @@ function setupTriggers() {
   ScriptApp.newTrigger('cleanupOldLogs')
     .timeBased().atHour(2).nearMinute(0).everyDays(1).create();
 
-  return { ok: true, message: '4 triggers created' };
+  // Keep-alive every 5 minutes (ป้องกัน cold start)
+  ScriptApp.newTrigger('keepAlive')
+    .timeBased().everyMinutes(5).create();
+
+  // Year-end archive: 31 ธันวาคม 23:00
+  ScriptApp.newTrigger('yearEndArchive')
+    .timeBased().onMonthDay(31).atHour(23).create();
+
+  return { ok: true, message: '6 triggers created' };
+}
+
+/**
+ * ============================================================
+ * Year-End Archive
+ * ============================================================
+ * รันอัตโนมัติ 31 ธันวาคม 23:00
+ * หรือรันมือจาก Apps Script Editor ได้เลย
+ *
+ * สิ่งที่ทำ:
+ *   1. Duplicate Spreadsheet ทั้งไฟล์ → "Mini HR — Archive YYYY"
+ *   2. ลบแถวปีเก่าออกจาก Checkins, Leaves, OT, Payments, Logs ในไฟล์หลัก
+ *   3. Init LeaveQuota ปีใหม่ให้ทุกพนักงาน
+ *   4. แจ้งเจ้าของระบบว่า archive สำเร็จ
+ * ============================================================
+ */
+function yearEndArchive() {
+  try {
+    const sheetId = getProp('SHEET_ID');
+    const ss = SpreadsheetApp.openById(sheetId);
+    const currentYear = new Date().getFullYear();         // ปีที่กำลัง archive (เช่น 2025)
+    const nextYear    = currentYear + 1;                  // ปีถัดไป (เช่น 2026)
+
+    logInfo('yearEndArchive', 'started', { currentYear, nextYear });
+
+    // ──────────────────────────────────────────
+    // Step 1: Duplicate ไฟล์ทั้งก้อน → Archive
+    // ──────────────────────────────────────────
+    const archiveName = 'Mini HR — Archive ' + currentYear;
+    const originalFile = DriveApp.getFileById(sheetId);
+    const parentFolder = originalFile.getParents().next();
+    const archiveCopy  = originalFile.makeCopy(archiveName, parentFolder);
+
+    logInfo('yearEndArchive', 'spreadsheet_duplicated', {
+      archiveId: archiveCopy.getId(),
+      archiveName: archiveName
+    });
+
+    // ──────────────────────────────────────────
+    // Step 2: ลบแถวปีเก่าจากไฟล์หลัก
+    // ──────────────────────────────────────────
+    const ARCHIVE_SHEETS = [
+      { name: SHEETS.CHECKINS.name,  dateCol: 'checkin_date' },
+      { name: SHEETS.LEAVES.name,    dateCol: 'start_date'   },
+      { name: SHEETS.OT.name,        dateCol: 'ot_date'      },
+      { name: SHEETS.PAYMENTS.name,  dateCol: 'period'       },  // format YYYY-MM
+      { name: SHEETS.LOGS.name,      dateCol: 'timestamp'    },
+    ];
+
+    const deleteSummary = {};
+
+    ARCHIVE_SHEETS.forEach(function(def) {
+      try {
+        const sheet = ss.getSheetByName(def.name);
+        if (!sheet) { deleteSummary[def.name] = 'sheet_not_found'; return; }
+
+        const data  = sheet.getDataRange().getValues();
+        const headers = data[0];
+        const colIdx  = headers.indexOf(def.dateCol);
+        if (colIdx < 0) { deleteSummary[def.name] = 'col_not_found'; return; }
+
+        // วนจากล่างขึ้นบนเพื่อ deleteRow ได้ถูก index
+        let deleted = 0;
+        for (let i = data.length - 1; i >= 1; i--) {
+          const rawVal = data[i][colIdx];
+          if (!rawVal) continue;
+          const yearInRow = _extractYear(rawVal);
+          if (yearInRow === currentYear) {
+            sheet.deleteRow(i + 1);  // +1 เพราะ sheet row เริ่มที่ 1
+            deleted++;
+          }
+        }
+        deleteSummary[def.name] = deleted + ' rows deleted';
+      } catch (sheetErr) {
+        deleteSummary[def.name] = 'error: ' + sheetErr.message;
+        logError('yearEndArchive:deleteRows', sheetErr.message, { sheet: def.name });
+      }
+    });
+
+    // ล้าง cache ทั้งหมดหลังลบข้อมูล
+    clearSheetCache();
+    invalidateAllRowCaches();
+
+    logInfo('yearEndArchive', 'rows_deleted', deleteSummary);
+
+    // ──────────────────────────────────────────
+    // Step 3: Init LeaveQuota ปีใหม่
+    // ──────────────────────────────────────────
+    const employees = getActiveEmployees();
+    let quotaCreated = 0;
+    employees.forEach(function(emp) {
+      try {
+        const existing = getLeaveQuota(emp.employee_id, nextYear);
+        if (!existing) {
+          initLeaveQuota(emp.employee_id, nextYear);
+          quotaCreated++;
+        }
+      } catch (qErr) {
+        logError('yearEndArchive:initQuota', qErr.message, { empId: emp.employee_id });
+      }
+    });
+
+    invalidateRowCache('LeaveQuota');
+
+    logInfo('yearEndArchive', 'quota_initialized', {
+      employees: employees.length,
+      quotaCreated: quotaCreated
+    });
+
+    // ──────────────────────────────────────────
+    // Step 4: แจ้งเจ้าของระบบ
+    // ──────────────────────────────────────────
+    const summary = Object.keys(deleteSummary).map(function(k) {
+      return '  • ' + k + ': ' + deleteSummary[k];
+    }).join('\n');
+
+    pushMessage(getProp('OWNER_LINE_USER_ID'), [{
+      type: 'text',
+      text: '✅ Archive ปี ' + currentYear + ' เสร็จแล้ว\n\n' +
+            '📁 ไฟล์ Archive: ' + archiveName + '\n' +
+            '🗑️ ลบข้อมูลจากไฟล์หลัก:\n' + summary + '\n\n' +
+            '📋 สร้าง LeaveQuota ปี ' + nextYear + ': ' + quotaCreated + ' คน\n\n' +
+            '⚠️ อย่าลืมอัปเดต Holidays ปี ' + nextYear + ' ด้วยนะคะ'
+    }]);
+
+    logInfo('yearEndArchive', 'completed', {
+      archiveId: archiveCopy.getId(),
+      currentYear,
+      nextYear,
+      quotaCreated
+    });
+
+    return {
+      ok: true,
+      archiveId: archiveCopy.getId(),
+      archiveName: archiveName,
+      deleteSummary: deleteSummary,
+      quotaCreated: quotaCreated
+    };
+
+  } catch (err) {
+    logError('yearEndArchive', err.message, { stack: err.stack });
+
+    // แจ้ง owner ว่า archive ล้มเหลว
+    try {
+      pushMessage(getProp('OWNER_LINE_USER_ID'), [{
+        type: 'text',
+        text: '❌ Archive ปีใหม่ล้มเหลว\n' +
+              'กรุณาตรวจสอบ Logs และรันมือแทน\n\n' +
+              'Error: ' + err.message
+      }]);
+    } catch (notifyErr) { /* ignore */ }
+
+    return { ok: false, error: err.message };
+  }
+}
+
+/**
+ * แยก ค.ศ. จาก cell value ที่อาจเป็น Date object, "2025-01-15", หรือ "2025-01"
+ * @param {*} val
+ * @returns {number} year (ค.ศ.) หรือ 0 ถ้า parse ไม่ได้
+ */
+function _extractYear(val) {
+  if (val instanceof Date) return val.getFullYear();
+  const str = String(val).trim();
+  // YYYY-MM-DD หรือ YYYY-MM หรือ YYYY
+  const match = str.match(/^(\d{4})/);
+  if (match) return parseInt(match[1], 10);
+  // อาจเป็น Date ที่ Apps Script serialize แปลกๆ
+  const d = new Date(val);
+  if (!isNaN(d.getTime())) return d.getFullYear();
+  return 0;
 }
 
