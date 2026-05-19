@@ -1033,6 +1033,30 @@ function checkin(payload) {
     );
   }
 
+  // === Send confirmation message to employee ===
+  const todayCheckins = getTodayCheckins(emp.employee_id);
+  const inCheckin = todayCheckins.find(c => c.slot === 'IN');
+  const outCheckin = todayCheckins.find(c => c.slot === 'OUT');
+  
+  let confirmMsg = '';
+  if (inCheckin) {
+    const inTime = inCheckin.checkin_at ? inCheckin.checkin_at.substring(11, 16) : 'N/A'; // extract HH:MM
+    confirmMsg = '✅ Checkin - ' + inTime;
+  }
+  if (outCheckin) {
+    const outTime = outCheckin.checkin_at ? outCheckin.checkin_at.substring(11, 16) : 'N/A';
+    confirmMsg = (confirmMsg ? confirmMsg + ', Checkout - ' + outTime : '✅ Checkout - ' + outTime);
+  } else if (inCheckin) {
+    confirmMsg = confirmMsg; // just show checkin for now
+  }
+  
+  if (confirmMsg) {
+    pushMessage(emp.line_user_id, [{
+      type: 'text',
+      text: confirmMsg
+    }]);
+  }
+
   logUserAction('checkin', lineUserId, 'success', { slot, inRange, distance, isLate });
   return {
     ok: true,

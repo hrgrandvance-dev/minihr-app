@@ -120,7 +120,7 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxBkocmZN1yPzoz
       if (!json.ok) { alert(json.error); return; }
       render(json);
     } catch (err) {
-      document.getElementById('loading').textContent = 'โหลดข้อมูลไม่ได้: ' + err.message;
+      document.getElementById('loading').textContent = getText('ERROR.load_failed', 'th') + ': ' + err.message;
     }
   })();
 

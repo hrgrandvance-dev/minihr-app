@@ -102,7 +102,7 @@
     <span class="btn-en">Take Photo or Choose from Gallery</span>
   </button>
   <img id="previewSelfie" class="preview" alt="">
-  <div id="statusSelfie" class="photo-status missing">⚠️ ยังไม่ได้ถ่ายรูป</div>
+  <div id="statusSelfie" class="photo-status missing">⚠️ ยังไม่ได้ถ่ายรูป<div style="font-size:9px;opacity:0.7;margin-top:3px;">No Photo</div></div>
 </div>
 
 <!-- ID CARD -->
@@ -113,10 +113,10 @@
     <span class="btn-en">Take Photo or Choose from Gallery</span>
   </button>
   <img id="previewIdCard" class="preview" alt="">
-  <div id="statusIdCard" class="photo-status missing">⚠️ ยังไม่ได้ถ่ายรูป</div>
+  <div id="statusIdCard" class="photo-status missing">⚠️ ยังไม่ได้ถ่ายรูป<div style="font-size:9px;opacity:0.7;margin-top:3px;">No Photo</div></div>
 </div>
 
-<button class="btn-submit" id="btnSubmit" disabled>ลงทะเบียน</button>
+<button class="btn-submit" id="btnSubmit" disabled>ลงทะเบียน<span class="btn-en">Register</span></button>
 <div id="status"></div>
 
 <!-- BOTTOM SHEET -->
@@ -211,7 +211,7 @@ async function handleFile(file) {
     }
     checkCanSubmit();
   } catch(err) {
-    showStatus('❌ ไม่สามารถอ่านรูปภาพได้: ' + err.message, 'error');
+    showStatus('❌ ' + getText('ERROR.load_failed', 'th') + ': ' + err.message, 'error');
   }
 }
 
@@ -297,14 +297,14 @@ try {
     json = JSON.parse(text);
   } catch(e) {
     // Apps Script redirect — ถ้า request ถึง server แล้วถือว่าสำเร็จ
-    showStatus('✅ ส่งข้อมูลเรียบร้อย กรุณารอการยืนยันทาง LINE', 'success');
+    showStatus(getText('SUCCESS.registered', 'th') + ' ' + getText('MISC.wait', 'en'), 'success');
     setTimeout(function() {
       if (liff.isInClient()) liff.closeWindow();
     }, 2500);
     return;
   }
   if (json.ok) {
-    showStatus('✅ ลงทะเบียนเรียบร้อย รหัส: ' + json.employeeId, 'success');
+    showStatus('✅ ' + getText('SUCCESS.registered', 'th') + ' ID: ' + json.employeeId, 'success');
     setTimeout(function() {
       if (liff.isInClient()) liff.closeWindow();
     }, 2500);

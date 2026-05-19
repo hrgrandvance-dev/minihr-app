@@ -4,7 +4,7 @@
  * ============================================================
  * Setup in Apps Script Editor → Triggers:
  *   - endWorkReminder: Daily 17:30
- *   - lateCheckinAlert: Daily 09:30
+ *   - lateCheckinAlert: Daily 08:25
  *   - pendingApprovalReminder: Every 2 hours
  */
 
@@ -48,7 +48,7 @@ function endWorkReminder() {
 }
 
 /**
- * Run at 09:30 daily
+ * Run at 08:25 daily (before 08:30 late threshold)
  * → list employees who should have checked in but haven't
  */
 function lateCheckinAlert() {
@@ -171,9 +171,9 @@ function setupTriggers() {
   ScriptApp.newTrigger('endWorkReminder')
     .timeBased().atHour(17).nearMinute(30).everyDays(1).create();
 
-  // Late check-in alert at 09:30
+  // Late check-in alert at 08:25 (before 08:30 late threshold)
   ScriptApp.newTrigger('lateCheckinAlert')
-    .timeBased().atHour(9).nearMinute(30).everyDays(1).create();
+    .timeBased().atHour(8).nearMinute(25).everyDays(1).create();
 
   // Pending approval reminder every 2 hours
   ScriptApp.newTrigger('pendingApprovalReminder')

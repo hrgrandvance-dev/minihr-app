@@ -100,24 +100,24 @@
       <label>งวด</label>
       <input type="month" id="payPeriod">
     </div>
-    <div id="payList" class="loading-state">เลือกงวดก่อน...</div>
+    <div id="payList" class="loading-state">เลือกงวดก่อน...<div style="font-size:9px;opacity:0.7;margin-top:3px;">Select Period First</div></div>
   </div>
 
   <div class="panel" id="panel-quota">
-    <div class="field"><label>ปี</label><input type="number" id="quotaYear" min="2024" max="2030"></div>
-    <div id="quotaList" class="loading-state">กำลังโหลด...</div>
+    <div class="field"><label>ปี<div style="font-size:9px;color:#AAA;margin-top:2px;">Year</div></label><input type="number" id="quotaYear" min="2024" max="2030"></div>
+    <div id="quotaList" class="loading-state">กำลังโหลด...<div style="font-size:9px;opacity:0.7;margin-top:3px;">Loading</div></div>
   </div>
 
   <div class="panel" id="panel-holidays">
     <button class="btn" id="btnAddHoliday"><span class="btn-text">+ เพิ่มวันหยุด</span><span class="btn-en">Add Holiday</span></button>
-    <div id="holidayList" class="loading-state">กำลังโหลด...</div>
+    <div id="holidayList" class="loading-state">กำลังโหลด...<div style="font-size:9px;opacity:0.7;margin-top:3px;">Loading</div></div>
   </div>
 
   <div class="panel" id="panel-report">
-    <div class="field"><label>งวด</label><input type="month" id="reportPeriod"></div>
+    <div class="field"><label>งวด<div style="font-size:9px;color:#AAA;margin-top:2px;">Period</div></label><input type="month" id="reportPeriod"></div>
     <button class="btn" id="btnGenReport"><span class="btn-text">สร้างรายงาน</span><span class="btn-en">Generate Report</span></button>
     <button class="btn btn-secondary" id="btnClosePeriod"><span class="btn-text">📦 ปิดงวด + คำนวณ Payroll</span><span class="btn-en">Close Period + Calc</span></button>
-    <div id="reportList" class="empty-state">เลือกงวดและกดสร้างรายงาน</div>
+    <div id="reportList" class="empty-state">เลือกงวดและกดสร้างรายงาน<div style="font-size:9px;opacity:0.7;margin-top:3px;">Select Period & Generate</div></div>
   </div>
 
 </div>
@@ -203,7 +203,7 @@ if (t.dataset.tab === 'holidays') loadHolidays();
 
   function renderEmployees() {
     const el = document.getElementById('empList');
-    if (employeesCache.length === 0) { el.textContent = 'ยังไม่มีพนักงาน'; return; }
+    if (employeesCache.length === 0) { el.textContent = getText('ERROR.no_employees', 'th'); return; }
     el.className = '';
     el.innerHTML = '';
     employeesCache.forEach(function(emp) {
@@ -212,7 +212,7 @@ if (t.dataset.tab === 'holidays') loadHolidays();
       item.innerHTML =
         '<div class="name">' + emp.display_name + ' (' + emp.employee_id + ')</div>' +
         '<div class="meta">' + (emp.department || '-') + ' · ' + (emp.position || '-') +
-        ' · ' + (emp.is_active ? 'ใช้งาน' : 'ไม่ใช้งาน') + '</div>';
+        ' · ' + (emp.is_active ? getText('HR_STATUS.active', 'th') : getText('HR_STATUS.inactive', 'th')) + '</div>';
       item.onclick = function() { openEmpModal(emp); };
       el.appendChild(item);
     });
