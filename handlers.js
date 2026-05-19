@@ -447,7 +447,7 @@ function getApprovalInbox(payload) {
  */
 function processApproval(payload) {
   return processApprovalPostback({
-    action: payload.action,
+    action: payload.actionType || payload.action,
     id: payload.id,
     level: payload.level,
     type: payload.type,
