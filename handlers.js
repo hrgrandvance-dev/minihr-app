@@ -109,21 +109,21 @@ try {
   pushMessage(lineUserId, [{
     type: 'text',
     text: '✅ ลงทะเบียนเรียบร้อย ' + displayName + '!\n' +
-          'Registered successfully!\n' +
-          'รหัสพนักงาน: ' + employeeId + ' (Employee ID)\n\n' +
+          '✅ Registered successfully, ' + displayName + '!\n' +
+          'รหัสพนักงาน / Employee ID: ' + employeeId + '\n\n' +
           '⚠️ รอ HR/เจ้าของระบบกำหนดผู้อนุมัติให้คุณก่อน จึงจะเริ่มลงเวลา/ขอลาได้\n' +
-          'Waiting for HR/Admin to set your approvers before you can check-in/submit leave'
+          '⚠️ Please wait for HR/Admin to assign your approvers before you can check-in or submit leave.'
   }]);
 
   // === Notify owner ===
   pushMessage(getProp('OWNER_LINE_USER_ID'), [{
     type: 'text',
-    text: '🆕 พนักงานใหม่ลงทะเบียน (New Employee Registered)\n' +
+    text: '🆕 พนักงานใหม่ลงทะเบียน / New Employee Registered\n' +
           'ID: ' + employeeId + '\n' +
-          'ชื่อ: ' + displayName + ' (Name)\n' +
-          'เบอร์: ' + phone + ' (Phone)\n\n' +
+          'ชื่อ / Name: ' + displayName + '\n' +
+          'เบอร์ / Phone: ' + phone + '\n\n' +
           'กรุณาเข้า "เครื่องมือ HR" เพื่อกำหนดผู้อนุมัติ\n' +
-          'Please go to "HR Tools" to assign approvers'
+          'Please go to "HR Tools" to assign approvers.'
   }]);
 
   invalidateRowCache('Employees');
@@ -155,14 +155,14 @@ function processApprovalPostback(payload) {
   // === Verify approver ===
   const approver = findEmployeeByLineId(userId);
   if (!approver) {
-    if (replyToken) replyMessage(replyToken, [{ type: 'text', text: 'ไม่พบข้อมูลผู้อนุมัติในระบบ' }]);
+    if (replyToken) replyMessage(replyToken, [{ type: 'text', text: 'ไม่พบข้อมูลผู้อนุมัติในระบบ\nApprover not found in the system.' }]);
     return { ok: false, error: 'approver_not_found' };
   }
 
   // === Get record ===
   const record = (type === 'leave') ? findLeaveById(recordId) : findOTById(recordId);
   if (!record) {
-    if (replyToken) replyMessage(replyToken, [{ type: 'text', text: 'ไม่พบรหัส ' + recordId }]);
+    if (replyToken) replyMessage(replyToken, [{ type: 'text', text: 'ไม่พบรหัส ' + recordId + '\nRecord ID not found: ' + recordId }]);
     return { ok: false, error: 'record_not_found' };
   }
 
@@ -170,7 +170,7 @@ function processApprovalPostback(payload) {
   if (record.current_approver !== approver.employee_id) {
     if (replyToken) replyMessage(replyToken, [{
       type: 'text',
-      text: '❌ คุณไม่ใช่ผู้อนุมัติของคำขอนี้ในขั้นนี้'
+      text: '❌ คุณไม่ใช่ผู้อนุมัติของคำขอนี้ในขั้นนี้\n❌ You are not the designated approver for this request at this level.'
     }]);
     return { ok: false, error: 'not_current_approver' };
   }
@@ -180,7 +180,7 @@ function processApprovalPostback(payload) {
   if (record.status !== expectedStatus) {
     if (replyToken) replyMessage(replyToken, [{
       type: 'text',
-      text: '⚠️ คำขอนี้สถานะเปลี่ยนไปแล้ว (' + record.status + ')'
+      text: '⚠️ คำขอนี้สถานะเปลี่ยนไปแล้ว (' + record.status + ')\n⚠️ This request status has already changed: ' + record.status
     }]);
     return { ok: false, error: 'wrong_status', currentStatus: record.status };
   }
@@ -300,7 +300,8 @@ function finalizeApproval(record, type, employee, history, sheetName, idField) {
   const typeLabel = type === 'leave' ? 'ใบลา' : 'OT';
   pushMessage(employee.line_user_id, [{
     type: 'text',
-    text: '🎉 คำขอ' + typeLabel + ' ' + record[idField] + ' ได้รับอนุมัติแล้ว!'
+    text: '🎉 คำขอ' + typeLabel + ' ' + record[idField] + ' ได้รับอนุมัติแล้ว!\n' +
+          '🎉 Your ' + (type === 'leave' ? 'Leave' : 'OT') + ' request ' + record[idField] + ' has been approved!'
   }]);
 }
 
@@ -327,7 +328,8 @@ function doReject(record, type, level, approver, replyToken) {
   const typeLabel = type === 'leave' ? 'ใบลา' : 'OT';
   pushMessage(employee.line_user_id, [{
     type: 'text',
-    text: '❌ คำขอ' + typeLabel + ' ' + record[idField] + ' ถูกปฏิเสธในขั้น ' + level
+    text: '❌ คำขอ' + typeLabel + ' ' + record[idField] + ' ถูกปฏิเสธในขั้น ' + level + '\n' +
+          '❌ Your ' + (type === 'leave' ? 'Leave' : 'OT') + ' request ' + record[idField] + ' was rejected at level ' + level + '.'
   }]);
 
   if (replyToken) replyMessage(replyToken, [{
@@ -370,8 +372,9 @@ function doNeedInfo(record, type, level, approver, replyToken) {
   const employee = findEmployeeById(record.employee_id);
   pushMessage(employee.line_user_id, [{
     type: 'text',
-    text: 'ℹ️ ผู้อนุมัติขอข้อมูลเพิ่มเติมสำหรับคำขอ ' + record[idField] +
-          '\n\nกรุณาคลิกลิงก์เพื่อแนบหลักฐาน:\n' + liffUrl
+    text: 'ℹ️ ผู้อนุมัติขอข้อมูลเพิ่มเติมสำหรับคำขอ ' + record[idField] + '\n' +
+          'ℹ️ The approver has requested additional information for request ' + record[idField] + '\n\n' +
+          'กรุณาคลิกลิงก์เพื่อแนบหลักฐาน / Please click the link to attach evidence:\n' + liffUrl
   }]);
 
   if (replyToken) replyMessage(replyToken, [{
@@ -748,9 +751,10 @@ function submitEvidence(payload) {
   if (approver) {
     pushMessage(approver.line_user_id, [{
       type: 'text',
-      text: '📎 ' + emp.display_name + ' ส่งหลักฐานเพิ่มสำหรับ ' + recordId + ' แล้ว\n\n' +
-            'หมายเหตุ: ' + (note || '-') + '\n' +
-            'ดูหลักฐาน: ' + evidenceUrl
+      text: '📎 ' + emp.display_name + ' ส่งหลักฐานเพิ่มสำหรับ ' + recordId + ' แล้ว\n' +
+            '📎 ' + emp.display_name + ' has submitted additional evidence for ' + recordId + '\n\n' +
+            'หมายเหตุ / Note: ' + (note || '-') + '\n' +
+            'ดูหลักฐาน / View Evidence: ' + evidenceUrl
     }]);
   }
 
@@ -868,10 +872,11 @@ function hrDeactivateEmployee(payload) {
     try {
       pushMessage(emp.line_user_id, [{
         type: 'text',
-        text: 'แจ้งจากระบบ Mini HR\n\n' +
+        text: 'แจ้งจากระบบ Mini HR / Mini HR System Notification\n\n' +
               'บัญชีของคุณถูกปิดการใช้งานแล้ว\n' +
-              'เหตุผล: ' + reason + '\n\n' +
-              'หากมีข้อสงสัยกรุณาติดต่อ HR โดยตรงค่ะ'
+              'Your account has been deactivated.\n' +
+              'เหตุผล / Reason: ' + reason + '\n\n' +
+              'หากมีข้อสงสัยกรุณาติดต่อ HR โดยตรง / Please contact HR directly if you have any questions.'
       }]);
     } catch (e) {
       logWarn('hrDeactivateEmployee', 'notify_failed', { empId: employeeId, err: e.message });
@@ -1164,11 +1169,12 @@ function closePeriod(payload) {
 
   pushMessage(getProp('OWNER_LINE_USER_ID'), [{
     type: 'text',
-    text: '💰 ปิดงวด ' + period + ' เรียบร้อย\n\n' +
+    text: '💰 ปิดงวด ' + period + ' เรียบร้อย / Payroll period ' + period + ' closed\n\n' +
           summaryLines.join('\n') + '\n\n' +
           '─────────────────\n' +
-          'รวมทั้งสิ้น: ' + totalSum.toLocaleString() + ' บาท\n\n' +
-          'หลังโอนเงินแล้ว กดเปลี่ยนสถานะ "จ่ายแล้ว" ใน Sheet Payments'
+          'รวมทั้งสิ้น / Grand Total: ' + totalSum.toLocaleString() + ' บาท (THB)\n\n' +
+          'หลังโอนเงินแล้ว กดเปลี่ยนสถานะ "จ่ายแล้ว" ใน Sheet Payments\n' +
+          'After transferring, update the status to "Paid" in the Payments sheet.'
   }]);
 
   return { ok: true, period: period, count: results.filter(function(r) { return !r.skipped; }).length, totalSum: totalSum, results: results };
@@ -1195,7 +1201,8 @@ function markPaid(payload) {
       pushMessage(emp.line_user_id, [{
         type: 'text',
         text: '💵 เงินเดือนงวด ' + payment.period + ' โอนเข้าบัญชีคุณแล้ว\n' +
-              'จำนวน: ' + Number(payment.total_amount).toLocaleString() + ' บาท'
+              '💵 Your salary for period ' + payment.period + ' has been transferred to your account.\n' +
+              'จำนวน / Amount: ' + Number(payment.total_amount).toLocaleString() + ' บาท (THB)'
       }]);
     }
   }
@@ -1564,11 +1571,12 @@ function submitLeave(payload) {
   // === Confirm to employee ===
   pushMessage(lineUserId, [{
     type: 'text',
-    text: '📝 ส่งใบลาเรียบร้อย\n' +
-          'รหัส: ' + leaveId + '\n' +
-          'ประเภท: ' + thaiLeaveType(leaveType) + '\n' +
-          'จำนวน: ' + totalDays + ' วัน\n' +
-          'สถานะ: รอ ' + (approver ? approver.display_name : 'ผู้อนุมัติ') + ' อนุมัติ (L1)'
+    text: '📝 ส่งใบลาเรียบร้อย / Leave Request Submitted\n' +
+          'รหัส / ID: ' + leaveId + '\n' +
+          'ประเภท / Type: ' + thaiLeaveType(leaveType) + '\n' +
+          'จำนวน / Duration: ' + totalDays + ' วัน (day(s))\n' +
+          'สถานะ / Status: รอ ' + (approver ? approver.display_name : 'ผู้อนุมัติ') + ' อนุมัติ (L1)\n' +
+          'Pending approval from ' + (approver ? approver.display_name : 'approver') + ' (L1)'
   }]);
 
   logUserAction('submitLeave', lineUserId, 'success', { leaveId, leaveType, totalDays });
@@ -1630,9 +1638,10 @@ function cancelLeave(payload) {
     pushMessage(leaveEmp.line_user_id, [{
       type: 'text',
       text: '🚫 ใบลา ' + leaveId + ' ถูกยกเลิกแล้ว\n' +
-            'ประเภท: ' + thaiLeaveType(leave.leave_type) + '\n' +
-            'จำนวน: ' + leave.total_days + ' วัน' +
-            (wasApproved ? '\n✅ คืนโควต้าแล้ว ' + leave.total_days + ' วัน' : '')
+            '🚫 Leave request ' + leaveId + ' has been cancelled.\n' +
+            'ประเภท / Type: ' + thaiLeaveType(leave.leave_type) + '\n' +
+            'จำนวน / Duration: ' + leave.total_days + ' วัน (day(s))' +
+            (wasApproved ? '\n✅ คืนโควต้าแล้ว / Leave quota restored: ' + leave.total_days + ' วัน (day(s))' : '')
     }]);
   }
 
@@ -1714,11 +1723,12 @@ function submitOT(payload) {
 
   pushMessage(lineUserId, [{
     type: 'text',
-    text: '⏱️ ส่งคำขอ OT เรียบร้อย\n' +
-          'รหัส: ' + otId + '\n' +
-          'วัน: ' + otDate + ' เวลา ' + startTime + '-' + endTime + '\n' +
-          'รวม: ' + totalHours + ' ชั่วโมง\n' +
-          'สถานะ: รอ ' + (approver ? approver.display_name : 'ผู้อนุมัติ') + ' อนุมัติ'
+    text: '⏱️ ส่งคำขอ OT เรียบร้อย / OT Request Submitted\n' +
+          'รหัส / ID: ' + otId + '\n' +
+          'วัน / Date: ' + otDate + ' เวลา / Time: ' + startTime + '-' + endTime + '\n' +
+          'รวม / Total: ' + totalHours + ' ชั่วโมง (hour(s))\n' +
+          'สถานะ / Status: รอ ' + (approver ? approver.display_name : 'ผู้อนุมัติ') + ' อนุมัติ\n' +
+          'Pending approval from ' + (approver ? approver.display_name : 'approver')
   }]);
 
   logUserAction('submitOT', lineUserId, 'success', { otId, totalHours });
