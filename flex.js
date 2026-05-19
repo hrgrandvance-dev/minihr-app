@@ -190,6 +190,63 @@ function needInfoButton(action, id, level, type) {
   };
 }
 
+
+/**
+ * Card แสดงหลังตัดสินใจแล้ว — มีเฉพาะปุ่มเปิดกล่องอนุมัติ
+ */
+function buildDoneCard(opts) {
+  var action = opts.action;   // 'approve' | 'reject' | 'need_info'
+  var id = opts.id;
+  var approverName = opts.approverName || '';
+  var typeLabel = opts.typeLabel || '';
+
+  var iconMap = { approve: '✅', reject: '❌', need_info: 'ℹ️' };
+  var labelMap = { approve: 'อนุมัติแล้ว', reject: 'ปฏิเสธแล้ว', need_info: 'ขอข้อมูลเพิ่มแล้ว' };
+  var colorMap = { approve: COLOR_GREEN, reject: COLOR_RED, need_info: '#F2A640' };
+
+  var approvalInboxUrl = 'https://liff.line.me/' + getProp('LIFF_ID_APPROVAL');
+
+  return {
+    type: 'bubble',
+    size: 'mega',
+    header: {
+      type: 'box',
+      layout: 'vertical',
+      backgroundColor: colorMap[action] || COLOR_GRAY,
+      paddingAll: 'md',
+      contents: [{
+        type: 'text',
+        text: (iconMap[action] || '') + ' ' + (labelMap[action] || action),
+        color: '#FFFFFF',
+        weight: 'bold',
+        size: 'lg'
+      }]
+    },
+    body: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        { type: 'text', text: typeLabel + ' ' + id, size: 'sm', color: '#555555', wrap: true },
+        { type: 'text', text: 'โดย ' + approverName, size: 'xs', color: COLOR_GRAY, margin: 'sm' }
+      ]
+    },
+    footer: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [{
+        type: 'button',
+        style: 'secondary',
+        height: 'sm',
+        action: {
+          type: 'uri',
+          label: '📥 กล่องอนุมัติ',
+          uri: approvalInboxUrl
+        }
+      }]
+    }
+  };
+}
+
 function thaiDuration(durationType, totalDays) {
   if (durationType === 'full_day') return 'เต็มวัน (' + totalDays + ')';
   if (durationType === 'half_day_morning') return 'ครึ่งวันเช้า';

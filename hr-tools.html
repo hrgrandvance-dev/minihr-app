@@ -85,6 +85,7 @@
   <div class="tab" data-tab="quota">📊 โควต้าลา<div class="tab-en">Quota</div></div>
   <div class="tab" data-tab="holidays">📅 วันหยุด<div class="tab-en">Holidays</div></div>
   <div class="tab" data-tab="report">📈 รายงาน<div class="tab-en">Report</div></div>
+  <div class="tab" data-tab="leaves">📋 ใบลา<div class="tab-en">Leaves</div></div>
 </div>
 
 <div class="content">
@@ -145,6 +146,14 @@
     <button class="btn" id="btnSaveEmp"><span class="btn-text">บันทึก</span><span class="btn-en">Save</span></button>
     <button class="btn btn-secondary" onclick="document.getElementById('empModal').classList.remove('show')"><span class="btn-text">ยกเลิก</span><span class="btn-en">Cancel</span></button>
   </div>
+  <div class="panel" id="panel-leaves">
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+      <button class="btn" onclick="loadLeaves('all')" id="filterAll" style="flex:1;font-size:12px;">ทั้งหมด</button>
+      <button class="btn btn-secondary" onclick="loadLeaves('pending')" id="filterPending" style="flex:1;font-size:12px;">รอดำเนินการ</button>
+      <button class="btn btn-secondary" onclick="loadLeaves('approved')" id="filterApproved" style="flex:1;font-size:12px;">อนุมัติแล้ว</button>
+    </div>
+    <div id="leaveList" class="loading-state">เลือกตัวกรองเพื่อโหลดรายการ</div>
+  </div>
 </div>
 
 <script>
@@ -178,6 +187,7 @@ loadHolidays();
 document.getElementById('panel-' + t.dataset.tab).classList.add('active');
 if (t.dataset.tab === 'quota') loadQuota();
 if (t.dataset.tab === 'holidays') loadHolidays();
+if (t.dataset.tab === 'leaves') loadLeaves('all');
       };
     });
   }
@@ -392,6 +402,61 @@ async function loadHolidays() {
       '</div>';
   }).join('');
 }
+
+// ==================== LEAVES ====================
+var currentLeaveFilter = 'all';
+
+async function loadLeaves(status) {
+  currentLeaveFilter = status || 'all';
+  // highlight active filter button
+  ['filterAll','filterPending','filterApproved'].forEach(function(id) {
+    document.getElementById(id).className = 'btn btn-secondary';
+  });
+  var activeMap = { all: 'filterAll', pending: 'filterPending', approved: 'filterApproved' };
+  if (activeMap[currentLeaveFilter]) {
+    document.getElementById(activeMap[currentLeaveFilter]).className = 'btn';
+  }
+
+  const el = document.getElementById('leaveList');
+  el.className = 'loading-state';
+  el.textContent = 'กำลังโหลด...';
+
+  const r = await api('hr_leaves', { status: currentLeaveFilter });
+  if (!r.ok) { el.className = ''; el.textContent = 'Error: ' + r.error; return; }
+  if (r.count === 0) { el.className = ''; el.textContent = 'ไม่มีรายการ'; return; }
+
+  const leaveTypeMap = { sick:'ลาป่วย', personal:'ลากิจ', vacation:'ลาพักร้อน', unpaid:'ลาไม่รับเงิน', emergency:'ลาฉุกเฉิน' };
+  const statusMap = {
+    pending_L1:'⏳ รอ L1', pending_L2:'⏳ รอ L2', pending_L3:'⏳ รอ L3',
+    approved:'✅ อนุมัติ', rejected:'❌ ปฏิเสธ', cancelled:'🚫 ยกเลิก'
+  };
+
+  el.className = '';
+  el.innerHTML = r.leaves.map(function(l) {
+    const canCancel = ['pending_L1','pending_L2','pending_L3','approved'].indexOf(l.status) >= 0;
+    const dateRange = l.start_date === l.end_date ? l.start_date : l.start_date + ' – ' + l.end_date;
+    return '<div class="card">' +
+      '<div class="row"><span class="lab">' + l.leave_id + '</span><span>' + (statusMap[l.status] || l.status) + '</span></div>' +
+      '<div class="row"><span class="lab">พนักงาน</span><span>' + l.display_name + ' (' + l.employee_id + ')</span></div>' +
+      '<div class="row"><span class="lab">ประเภท</span><span>' + (leaveTypeMap[l.leave_type] || l.leave_type) + '</span></div>' +
+      '<div class="row"><span class="lab">วันที่</span><span>' + dateRange + ' · ' + l.total_days + ' วัน</span></div>' +
+      '<div class="row"><span class="lab">เหตุผล</span><span>' + (l.reason || '-') + '</span></div>' +
+      (canCancel ? '<button class="btn" style="background:#B23A3A;width:100%;margin-top:8px;font-size:13px;" onclick="doCancel('' + l.leave_id + '','' + l.display_name + '')">🚫 ยกเลิกใบลา</button>' : '') +
+      '</div>';
+  }).join('');
+}
+
+async function doCancel(leaveId, name) {
+  if (!confirm('ยืนยันยกเลิกใบลา ' + leaveId + '\nของ ' + name + '?')) return;
+  const r = await api('cancel_leave', { leaveId: leaveId });
+  if (r.ok) {
+    alert('✅ ยกเลิกใบลาเรียบร้อย' + (r.quotaRestored ? '\n✅ คืนโควต้าแล้ว' : ''));
+    loadLeaves(currentLeaveFilter);
+  } else {
+    alert('Error: ' + (r.message || r.error));
+  }
+}
+
   // ==================== Stubs ====================
   document.getElementById('btnAddEmp').onclick = function() {
     alert('การเพิ่มพนักงานใหม่ ให้ใช้หน้า "ลงทะเบียน" ของพนักงานคนนั้นเอง\n\nหลังจากลงทะเบียน แล้วเข้ามาที่นี่เพื่อตั้ง approver และค่าจ้าง');

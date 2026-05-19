@@ -244,16 +244,28 @@ function doApprove(record, type, level, approver, replyToken) {
       }
 
       if (replyToken) replyMessage(replyToken, [{
-        type: 'text',
-        text: '✅ อนุมัติแล้ว (ขั้น ' + level + ')\nส่งต่อ ' + nextApprover.display_name + ' (' + nextLevel + ')'
+        type: 'flex',
+        altText: '✅ อนุมัติแล้ว — ' + record[idField],
+        contents: buildDoneCard({
+          action: 'approve',
+          id: record[idField],
+          approverName: approver.display_name,
+          typeLabel: type === 'leave' ? 'ใบลา' : 'OT'
+        })
       }]);
     }
   } else {
     // Final approval
     finalizeApproval(record, type, employee, history, sheetName, idField);
     if (replyToken) replyMessage(replyToken, [{
-      type: 'text',
-      text: '✅ อนุมัติเรียบร้อย\n' + record[idField] + ' (' + level + ' = final)'
+      type: 'flex',
+      altText: '✅ อนุมัติเรียบร้อย — ' + record[idField],
+      contents: buildDoneCard({
+        action: 'approve',
+        id: record[idField],
+        approverName: approver.display_name,
+        typeLabel: type === 'leave' ? 'ใบลา' : 'OT'
+      })
     }]);
   }
 
@@ -314,7 +326,16 @@ function doReject(record, type, level, approver, replyToken) {
     text: '❌ คำขอ' + typeLabel + ' ' + record[idField] + ' ถูกปฏิเสธในขั้น ' + level
   }]);
 
-  if (replyToken) replyMessage(replyToken, [{ type: 'text', text: 'บันทึกการปฏิเสธแล้ว' }]);
+  if (replyToken) replyMessage(replyToken, [{
+    type: 'flex',
+    altText: '❌ ปฏิเสธแล้ว — ' + record[idField],
+    contents: buildDoneCard({
+      action: 'reject',
+      id: record[idField],
+      approverName: approver.display_name,
+      typeLabel: type === 'leave' ? 'ใบลา' : 'OT'
+    })
+  }]);
 
   logUserAction('doReject', approver.line_user_id, 'success', { recordId: record[idField] });
   return { ok: true };
@@ -350,8 +371,14 @@ function doNeedInfo(record, type, level, approver, replyToken) {
   }]);
 
   if (replyToken) replyMessage(replyToken, [{
-    type: 'text',
-    text: 'ส่งคำขอข้อมูลเพิ่มถึงพนักงานแล้ว'
+    type: 'flex',
+    altText: 'ℹ️ ขอข้อมูลเพิ่มแล้ว — ' + record[idField],
+    contents: buildDoneCard({
+      action: 'need_info',
+      id: record[idField],
+      approverName: approver.display_name,
+      typeLabel: type === 'leave' ? 'ใบลา' : 'OT'
+    })
   }]);
 
   logUserAction('doNeedInfo', approver.line_user_id, 'success', { recordId: record[idField] });
@@ -1267,6 +1294,71 @@ function submitLeave(payload) {
   return { ok: true, leaveId: leaveId, status: 'pending_L1' };
 }
 
+
+// ============================================================
+// Cancel Leave — ยกเลิกใบลา
+// ============================================================
+function cancelLeave(payload) {
+  var lineUserId = payload.lineUserId;
+  var leaveId = payload.leaveId;
+
+  if (!lineUserId) return { ok: false, error: 'missing_line_user_id' };
+  if (!leaveId) return { ok: false, error: 'missing_leave_id' };
+
+  var emp = findEmployeeByLineId(lineUserId);
+  if (!emp) return { ok: false, error: 'not_registered' };
+
+  var leave = findLeaveById(leaveId);
+  if (!leave) return { ok: false, error: 'leave_not_found' };
+
+  // เฉพาะ HR owner เท่านั้นที่ยกเลิกได้
+  if (!isOwner(lineUserId)) {
+    return { ok: false, error: 'forbidden' };
+  }
+
+  // ยกเลิกได้เฉพาะสถานะ pending หรือ approved
+  var cancellableStatuses = ['pending_L1', 'pending_L2', 'pending_L3', 'approved'];
+  if (cancellableStatuses.indexOf(leave.status) < 0) {
+    return { ok: false, error: 'cannot_cancel', message: 'ไม่สามารถยกเลิกใบลาที่มีสถานะ: ' + leave.status };
+  }
+
+  // อัปเดต status เป็น cancelled
+  var history = parseHistory(leave.approval_history);
+  history.push({ level: 'cancel', by: emp.employee_id, at: nowBangkok(), action: 'cancelled' });
+  updateRowByNumber(SHEETS.LEAVES.name, leave._row, {
+    status: 'cancelled',
+    current_approver: '',
+    approval_history: JSON.stringify(history)
+  });
+  invalidateRowCache('Leaves');
+
+  // คืนโควต้าถ้าใบลาถูกอนุมัติไปแล้ว
+  var wasApproved = leave.status === 'approved';
+  if (wasApproved) {
+    try {
+      restoreLeaveQuota(leave);
+      invalidateRowCache('LeaveQuota');
+    } catch (err) {
+      logError('cancelLeave:restoreQuota', err.message);
+    }
+  }
+
+  // แจ้งพนักงาน
+  var leaveEmp = findEmployeeById(leave.employee_id);
+  if (leaveEmp) {
+    pushMessage(leaveEmp.line_user_id, [{
+      type: 'text',
+      text: '🚫 ใบลา ' + leaveId + ' ถูกยกเลิกแล้ว\n' +
+            'ประเภท: ' + thaiLeaveType(leave.leave_type) + '\n' +
+            'จำนวน: ' + leave.total_days + ' วัน' +
+            (wasApproved ? '\n✅ คืนโควต้าแล้ว ' + leave.total_days + ' วัน' : '')
+    }]);
+  }
+
+  logUserAction('cancelLeave', lineUserId, 'success', { leaveId: leaveId, prevStatus: leave.status });
+  return { ok: true, leaveId: leaveId, quotaRestored: wasApproved };
+}
+
 function thaiLeaveType(type) {
   const map = {
     sick: 'ป่วย',
@@ -1351,6 +1443,34 @@ function submitOT(payload) {
   logUserAction('submitOT', lineUserId, 'success', { otId, totalHours });
   return { ok: true, otId: otId };
 }
+
+// ============================================================
+// HR: ดึงรายการใบลาทั้งหมด (สำหรับ hr-tools)
+// ============================================================
+function hrGetLeaves(payload) {
+  if (!isOwner(payload.lineUserId)) return { ok: false, error: 'forbidden' };
+
+  var statusFilter = payload.status || 'all'; // all / pending / approved / cancelled
+  var rows = filterRows(SHEETS.LEAVES.name, function(r) {
+    if (statusFilter === 'all') return true;
+    if (statusFilter === 'pending') return String(r.status).indexOf('pending_') === 0;
+    return r.status === statusFilter;
+  });
+
+  // เรียงจากใหม่ไปเก่า
+  rows.sort(function(a, b) {
+    return String(b.submitted_at).localeCompare(String(a.submitted_at));
+  });
+
+  // แนบชื่อพนักงาน
+  rows = rows.map(function(r) {
+    var emp = findEmployeeById(r.employee_id);
+    return Object.assign({}, r, { display_name: emp ? emp.display_name : r.employee_id });
+  });
+
+  return { ok: true, leaves: rows, count: rows.length };
+}
+
 function hrGetQuota(payload) {
   if (!isOwner(payload.lineUserId)) return { ok: false, error: 'forbidden' };
   const year = payload.year;

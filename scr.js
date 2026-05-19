@@ -556,6 +556,8 @@ const ACTION_HANDLERS = {
   'hr_report':      function(p) { return hrGetReport(p); },
   'close_period':   function(p) { return closePeriod(p); },
   'mark_paid':      function(p) { return markPaid(p); },
+  'cancel_leave':   function(p) { return cancelLeave(p); },
+  'hr_leaves':      function(p) { return hrGetLeaves(p); },
 };
 
 function routeAction(action, payload) {
@@ -826,6 +828,18 @@ function deductLeaveQuota(leave) {
   const usedField = leave.leave_type + '_used';
   const updates = {};
   updates[usedField] = Number(quota[usedField] || 0) + Number(leave.total_days || 0);
+  updateRowByNumber(SHEETS.LEAVE_QUOTA.name, quota._row, updates);
+}
+
+function restoreLeaveQuota(leave) {
+  if (!leave.leave_type || leave.leave_type === 'unpaid' || leave.leave_type === 'emergency') return;
+  const year = new Date(leave.start_date).getFullYear();
+  const quota = getLeaveQuota(leave.employee_id, year);
+  if (!quota) return;
+  const usedField = leave.leave_type + '_used';
+  const restored = Math.max(0, Number(quota[usedField] || 0) - Number(leave.total_days || 0));
+  const updates = {};
+  updates[usedField] = restored;
   updateRowByNumber(SHEETS.LEAVE_QUOTA.name, quota._row, updates);
 }
 
