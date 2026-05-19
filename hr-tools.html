@@ -441,7 +441,7 @@ async function loadLeaves(status) {
       '<div class="row"><span class="lab">ประเภท</span><span>' + (leaveTypeMap[l.leave_type] || l.leave_type) + '</span></div>' +
       '<div class="row"><span class="lab">วันที่</span><span>' + dateRange + ' · ' + l.total_days + ' วัน</span></div>' +
       '<div class="row"><span class="lab">เหตุผล</span><span>' + (l.reason || '-') + '</span></div>' +
-      (canCancel ? '<button class="btn" style="background:#B23A3A;width:100%;margin-top:8px;font-size:13px;" onclick="doCancel('' + l.leave_id + '','' + l.display_name + '')">🚫 ยกเลิกใบลา</button>' : '') +
+      (canCancel ? '<button class="btn" style="background:#B23A3A;width:100%;margin-top:8px;font-size:13px;" onclick="doCancel(\'' + l.leave_id + '\',\'' + l.display_name + '\')">🚫 ยกเลิกใบลา</button>' : '') +
       '</div>';
   }).join('');
 }
