@@ -109,18 +109,21 @@ try {
   pushMessage(lineUserId, [{
     type: 'text',
     text: '✅ ลงทะเบียนเรียบร้อย ' + displayName + '!\n' +
-          'รหัสพนักงาน: ' + employeeId + '\n\n' +
-          '⚠️ รอ HR/เจ้าของระบบกำหนดผู้อนุมัติให้คุณก่อน จึงจะเริ่มลงเวลา/ขอลาได้'
+          'Registered successfully!\n' +
+          'รหัสพนักงาน: ' + employeeId + ' (Employee ID)\n\n' +
+          '⚠️ รอ HR/เจ้าของระบบกำหนดผู้อนุมัติให้คุณก่อน จึงจะเริ่มลงเวลา/ขอลาได้\n' +
+          'Waiting for HR/Admin to set your approvers before you can check-in/submit leave'
   }]);
 
   // === Notify owner ===
   pushMessage(getProp('OWNER_LINE_USER_ID'), [{
     type: 'text',
-    text: '🆕 พนักงานใหม่ลงทะเบียน\n' +
+    text: '🆕 พนักงานใหม่ลงทะเบียน (New Employee Registered)\n' +
           'ID: ' + employeeId + '\n' +
-          'ชื่อ: ' + displayName + '\n' +
-          'เบอร์: ' + phone + '\n\n' +
-          'กรุณาเข้า "เครื่องมือ HR" เพื่อกำหนดผู้อนุมัติ'
+          'ชื่อ: ' + displayName + ' (Name)\n' +
+          'เบอร์: ' + phone + ' (Phone)\n\n' +
+          'กรุณาเข้า "เครื่องมือ HR" เพื่อกำหนดผู้อนุมัติ\n' +
+          'Please go to "HR Tools" to assign approvers'
   }]);
 
   invalidateRowCache('Employees');

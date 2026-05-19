@@ -160,7 +160,7 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxBkocmZN1yPzoz
     if (!json.ok) { alert(json.error); return; }
     render(json);
   } catch (err) {
-    document.getElementById('loading').textContent = 'โหลดไม่ได้: ' + err.message;
+    document.getElementById('loading').innerHTML = 'โหลดไม่ได้<div style="font-size:10px;opacity:0.75;margin-top:2px;">Loading Failed</div> : ' + err.message;
   }
 })();
 

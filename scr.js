@@ -622,7 +622,7 @@ function processWebhookEvent(event) {
 function handleFollowEvent(userId, replyToken) {
   replyMessage(replyToken, [{
     type: 'text',
-    text: 'ยินดีต้อนรับสู่ Mini HR App!\n\nกดเมนูด้านล่างเพื่อเริ่มลงทะเบียน หรือใช้งานระบบ'
+    text: 'สวัสดี นี่คือบัญชีทางการของ HR-Grandvance\n\nเมนูพนักงาน\n1. ลงเวลาทำงาน\n2. ส่งใบลา\n3. ขออนุมัติ OT (เฉพาะพนักงานออฟฟิศ)\n4. ดูยอดวันลาคงเหลือ และประมาณการรายได้\n\nหากต้องการติดต่อ HR สามารถพิมพ์ข้อความในนี้ได้เลย 💌\n\n---\n\nHello! This is the official account of HR-Grandvance\n\nEmployee Menu\n1. Check in/out\n2. Submit leave requests\n3. Request OT approval (Office staff only)\n4. View remaining leave balance and estimated income\n\nTo contact HR, you can message us directly here. 💌'
   }]);
 }
 

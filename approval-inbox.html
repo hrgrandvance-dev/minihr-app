@@ -96,10 +96,11 @@
       const level = String(l.status).replace('pending_', '');
       const levelText = getText('APPROVAL_STATUS.pending_' + level, 'th');
       const leaveTypeText = TRANSLATIONS.LEAVE_TYPE[l.leave_type]?.th || l.leave_type;
+      const leaveTypeEn = TRANSLATIONS.LEAVE_TYPE[l.leave_type]?.en || l.leave_type;
       html += '<div class="item">';
-      html += '<div class="id">' + l.leave_id + ' · ' + getText('REQUEST_TYPE.leave', 'th') + ' · ' + levelText + '<div style="font-size:9px;opacity:0.7;margin-top:2px;">' + leaveTypeText + '</div></div>';
+      html += '<div class="id">' + l.leave_id + ' · ' + getText('REQUEST_TYPE.leave', 'th') + '<span style="font-size:9px;opacity:0.7;display:block;margin-top:2px;">Leave</span> · ' + levelText + '<div style="font-size:9px;opacity:0.7;margin-top:2px;">' + leaveTypeText + '<div style="font-size:8px;opacity:0.6;margin-top:1px;">' + leaveTypeEn + '</div></div></div>';
       html += '<div class="name">' + l.employee_id + '</div>';
-      html += '<div class="meta">' + leaveTypeText + ' · ' + l.total_days + ' ' + getText('FORM_LABELS.duration', 'th') + ' · ' +
+      html += '<div class="meta">' + leaveTypeText + ' · ' + l.total_days + ' ' + getText('FORM_LABELS.duration', 'th') + '<span style="font-size:9px;opacity:0.7;display:inline-block;margin-left:2px;">(day)</span> · ' +
               l.start_date + (l.start_date !== l.end_date ? ' - ' + l.end_date : '') + '</div>';
       html += '<div class="reason">' + l.reason + '</div>';
       html += renderActions(l.leave_id, level, 'leave');
@@ -112,7 +113,7 @@
       html += '<div class="id">' + o.ot_id + ' · ' + getText('REQUEST_TYPE.ot', 'th') + ' · ' + levelText + '<div style="font-size:9px;opacity:0.7;margin-top:2px;">Overtime</div></div>';
       html += '<div class="name">' + o.employee_id + '</div>';
       html += '<div class="meta">' + o.ot_date + ' ' + o.start_time + '-' + o.end_time +
-              ' · ' + o.total_hours + ' ชม.</div>';
+              ' · ' + o.total_hours + ' <span style="font-size:11px;opacity:0.75;">ชม. / hrs</span></div>';
       html += '<div class="reason">' + o.reason + '</div>';
       html += renderActions(o.ot_id, level, 'ot');
       html += '</div>';
@@ -127,7 +128,7 @@
     return '<div class="actions">' +
       '<button class="approve" onclick="act(\'approve\',\''+id+'\',\''+level+'\',\''+type+'\')"><span style="display:block;">✅ ' + approveBoth.th + '</span><span style="font-size:9px;opacity:0.8;">' + approveBoth.en + '</span></button>' +
       '<button class="reject" onclick="act(\'reject\',\''+id+'\',\''+level+'\',\''+type+'\')"><span style="display:block;">❌ ' + rejectBoth.th + '</span><span style="font-size:9px;opacity:0.8;">' + rejectBoth.en + '</span></button>' +
-      '<button class="info" onclick="act(\'need_info\',\''+id+'\',\''+level+'\',\''+type+'\')"><span style="display:block;">ℹ️ ขอข้อมูล</span><span style="font-size:9px;opacity:0.8;">' + infoBoth.en + '</span></button>' +
+      '<button class="info" onclick="act(\'need_info\',\''+id+'\',\''+level+'\',\''+type+'\')"><span style="display:block;">ℹ️ ขอข้อมูล<span style="font-size:9px;opacity:0.8;display:block;margin-top:1px;">More Info</span></span></button>' +
       '</div>';
   }
 
