@@ -788,6 +788,129 @@ function hrUpdateEmployee(payload) {
   return { ok: ok };
 }
 
+/**
+ * ปิดการใช้งานพนักงานที่ลาออก
+ * - ตั้ง is_active = false
+ * - Unlink Rich Menu จาก LINE (พนักงานจะเห็นแค่เมนูว่าง)
+ * - ยกเลิก pending leaves / OT ที่ยังค้างอยู่
+ * - แจ้ง LINE ให้พนักงานรู้
+ */
+function hrDeactivateEmployee(payload) {
+  if (!isOwner(payload.lineUserId)) return { ok: false, error: 'forbidden' };
+
+  const employeeId = payload.employeeId;
+  const reason     = payload.reason || 'ลาออก';
+  const notify     = payload.notify !== false; // default: แจ้งพนักงาน
+
+  if (!employeeId) return { ok: false, error: 'missing_employee_id' };
+
+  const emp = findEmployeeById(employeeId);
+  if (!emp) return { ok: false, error: 'employee_not_found' };
+
+  if (emp.is_active === false || emp.is_active === 'false' || emp.is_active === 'FALSE') {
+    return { ok: false, error: 'already_inactive' };
+  }
+
+  // 1) ปิดสถานะในชีท
+  updateRowByNumber(SHEETS.EMPLOYEES.name, emp._row, { is_active: false });
+  invalidateRowCache('Employees');
+
+  // 2) Unlink Rich Menu ใน LINE (พนักงานจะไม่เห็นเมนูอีก)
+  if (emp.line_user_id) {
+    try {
+      unlinkRichMenu(emp.line_user_id);
+    } catch (e) {
+      logWarn('hrDeactivateEmployee', 'unlink_richmenu_failed', { empId: employeeId, err: e.message });
+    }
+  }
+
+  // 3) ยกเลิก pending leaves ที่ยังค้าง
+  var cancelledLeaves = 0;
+  var pendingLeaves = filterRows(SHEETS.LEAVES.name, function(r) {
+    return r.employee_id === employeeId && String(r.status).indexOf('pending_') === 0;
+  });
+  pendingLeaves.forEach(function(leave) {
+    updateRowByNumber(SHEETS.LEAVES.name, leave._row, {
+      status: 'cancelled',
+      current_approver: '',
+      approval_history: JSON.stringify(
+        parseHistory(leave.approval_history).concat([{
+          level: 'system', by: 'hr_deactivate', at: nowBangkok(), action: 'auto_cancelled'
+        }])
+      )
+    });
+    cancelledLeaves++;
+  });
+
+  // 4) ยกเลิก pending OT ที่ยังค้าง
+  var cancelledOT = 0;
+  var pendingOT = filterRows(SHEETS.OT.name, function(r) {
+    return r.employee_id === employeeId && String(r.status).indexOf('pending_') === 0;
+  });
+  pendingOT.forEach(function(ot) {
+    updateRowByNumber(SHEETS.OT.name, ot._row, {
+      status: 'cancelled',
+      current_approver: '',
+      approval_history: JSON.stringify(
+        parseHistory(ot.approval_history).concat([{
+          level: 'system', by: 'hr_deactivate', at: nowBangkok(), action: 'auto_cancelled'
+        }])
+      )
+    });
+    cancelledOT++;
+  });
+
+  // 5) แจ้งพนักงานทาง LINE
+  if (notify && emp.line_user_id) {
+    try {
+      pushMessage(emp.line_user_id, [{
+        type: 'text',
+        text: 'แจ้งจากระบบ Mini HR\n\n' +
+              'บัญชีของคุณถูกปิดการใช้งานแล้ว\n' +
+              'เหตุผล: ' + reason + '\n\n' +
+              'หากมีข้อสงสัยกรุณาติดต่อ HR โดยตรงค่ะ'
+      }]);
+    } catch (e) {
+      logWarn('hrDeactivateEmployee', 'notify_failed', { empId: employeeId, err: e.message });
+    }
+  }
+
+  logUserAction('hrDeactivateEmployee', payload.lineUserId, 'deactivated', {
+    employeeId: employeeId,
+    empName: emp.display_name,
+    reason: reason,
+    cancelledLeaves: cancelledLeaves,
+    cancelledOT: cancelledOT
+  });
+
+  return {
+    ok: true,
+    employeeId: employeeId,
+    display_name: emp.display_name,
+    cancelledLeaves: cancelledLeaves,
+    cancelledOT: cancelledOT
+  };
+}
+
+/**
+ * เปิดใช้งานพนักงานกลับมา (กรณี reactivate)
+ */
+function hrReactivateEmployee(payload) {
+  if (!isOwner(payload.lineUserId)) return { ok: false, error: 'forbidden' };
+
+  const employeeId = payload.employeeId;
+  if (!employeeId) return { ok: false, error: 'missing_employee_id' };
+
+  const emp = findEmployeeById(employeeId);
+  if (!emp) return { ok: false, error: 'employee_not_found' };
+
+  updateRowByNumber(SHEETS.EMPLOYEES.name, emp._row, { is_active: true });
+  invalidateRowCache('Employees');
+
+  logUserAction('hrReactivateEmployee', payload.lineUserId, 'reactivated', { employeeId });
+  return { ok: true, employeeId: employeeId, display_name: emp.display_name };
+}
+
 function hrGetPayItems(payload) {
   if (!isOwner(payload.lineUserId)) return { ok: false, error: 'forbidden' };
   const period = payload.period || currentPeriod();

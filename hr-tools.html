@@ -218,6 +218,15 @@
     </div>
     <button class="btn" id="btnSaveEmp"><span class="btn-text">บันทึก</span><span class="btn-en">Save</span></button>
     <button class="btn btn-secondary" onclick="document.getElementById('empModal').classList.remove('show')"><span class="btn-text">ยกเลิก</span><span class="btn-en">Cancel</span></button>
+    <hr style="border:none;border-top:1px solid #EEE;margin:12px 0;">
+    <div id="empDeactivateSection">
+      <button class="btn" id="btnDeactivateEmp" style="background:#C0392B;width:100%;margin-bottom:8px;">
+        <span class="btn-text">🚫 ปิดใช้งาน (ลาออก)</span><span class="btn-en"> / Deactivate</span>
+      </button>
+      <button class="btn" id="btnReactivateEmp" style="background:#27AE60;width:100%;display:none;">
+        <span class="btn-text">✅ เปิดใช้งานอีกครั้ง</span><span class="btn-en"> / Reactivate</span>
+      </button>
+    </div>
   </div>
   <div class="panel" id="panel-leaves">
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
@@ -329,6 +338,12 @@ if (t.dataset.tab === 'leaves') loadLeaves('all');
         });
     });
     document.getElementById('empActive').value = emp.is_active ? 'true' : 'false';
+
+    // แสดงปุ่มตามสถานะ
+    var isActive = emp.is_active === true || emp.is_active === 'true' || emp.is_active === 'TRUE';
+    document.getElementById('btnDeactivateEmp').style.display = isActive ? 'block' : 'none';
+    document.getElementById('btnReactivateEmp').style.display = isActive ? 'none' : 'block';
+
     document.getElementById('empModal').classList.add('show');
   }
 
@@ -358,6 +373,40 @@ if (t.dataset.tab === 'leaves') loadLeaves('all');
     }
   };
 
+  document.getElementById('btnDeactivateEmp').onclick = async function() {
+    const empId = document.getElementById('empId').value;
+    const empName = document.getElementById('empName').value;
+    const reason = prompt(
+      'ยืนยันปิดใช้งาน: ' + empName + '\n\nระบุเหตุผล (ลาออก / เลิกจ้าง ฯลฯ):',
+      'ลาออก'
+    );
+    if (reason === null) return; // กด Cancel
+    const r = await api('hr_deactivate_emp', { employeeId: empId, reason: reason || 'ลาออก' });
+    if (r.ok) {
+      var msg = '✅ ปิดใช้งาน ' + empName + ' เรียบร้อย';
+      if (r.cancelledLeaves > 0) msg += '\nยกเลิกใบลาค้าง: ' + r.cancelledLeaves + ' รายการ';
+      if (r.cancelledOT > 0)     msg += '\nยกเลิก OT ค้าง: ' + r.cancelledOT + ' รายการ';
+      alert(msg);
+      document.getElementById('empModal').classList.remove('show');
+      loadEmployees();
+    } else {
+      alert('Error: ' + r.error);
+    }
+  };
+
+  document.getElementById('btnReactivateEmp').onclick = async function() {
+    const empId = document.getElementById('empId').value;
+    const empName = document.getElementById('empName').value;
+    if (!confirm('เปิดใช้งาน ' + empName + ' อีกครั้ง?')) return;
+    const r = await api('hr_reactivate_emp', { employeeId: empId });
+    if (r.ok) {
+      alert('✅ เปิดใช้งาน ' + empName + ' เรียบร้อย');
+      document.getElementById('empModal').classList.remove('show');
+      loadEmployees();
+    } else {
+      alert('Error: ' + r.error);
+    }
+  };
   // ==================== PAY ITEMS ====================
   document.getElementById('payPeriod').onchange = loadPayItems;
 
