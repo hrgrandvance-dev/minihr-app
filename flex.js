@@ -52,7 +52,7 @@ function biLabel(th, en) {
 function kvBi(key, val) {
   return {
     type: 'box',
-    layout: 'baseline',
+    layout: 'horizontal',
     spacing: 'sm',
     margin: 'sm',
     contents: [
