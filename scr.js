@@ -359,7 +359,12 @@ function uploadImage(base64, filename, subfolder) {
   );
   const file = targetFolder.createFile(blob);
   // ต้องตั้ง public sharing เพื่อให้ LINE Flex card แสดงรูปได้
-  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  // wrap แยกเพื่อไม่ให้ sharing error ทำให้ upload ล้มเหลวทั้งหมด
+  try {
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  } catch (sharingErr) {
+    logWarn('uploadImage:setSharing', sharingErr.message, { filename });
+  }
   return 'https://drive.google.com/uc?id=' + file.getId();
 }
 
