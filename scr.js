@@ -509,7 +509,9 @@ function writeLog(level, fn, userId, message, payload) {
     const sheet = getSheet(SHEETS.LOGS.name);
     if (!sheet) { console.error('Logs sheet not found'); return; }
     const payloadStr = payload ? JSON.stringify(payload).substring(0, 1000) : '';
-    sheet.appendRow([nowBangkok(), level, fn || '', userId || '', message || '', payloadStr]);
+    // ใช้ formatDateTime แทน nowBangkok เพื่อให้ Logs sheet อ่านง่าย
+    // เช่น "2026-05-19 09:30:00" แทน "2026-05-19T09:30:00+07:00"
+    sheet.appendRow([formatDateTime(new Date()), level, fn || '', userId || '', message || '', payloadStr]);
   } catch (err) {
     console.error('Failed to write log', err.message);
   }
@@ -862,7 +864,6 @@ const TZ = 'Asia/Bangkok';
 
 function nowBangkok()    { return Utilities.formatDate(new Date(), TZ, "yyyy-MM-dd'T'HH:mm:ssXXX"); }
 function todayBangkok()  { return Utilities.formatDate(new Date(), TZ, "yyyy-MM-dd"); }
-function timeBangkok()   { return Utilities.formatDate(new Date(), TZ, "HH:mm:ss"); }
 function formatDate(d)   { return Utilities.formatDate(d, TZ, "yyyy-MM-dd"); }
 function formatDateTime(d) { return Utilities.formatDate(d, TZ, "yyyy-MM-dd HH:mm:ss"); }
 
@@ -951,12 +952,6 @@ function minutesNow() {
 }
 
 function diffMinutes(t1, t2) { return parseHHMM(t2) - parseHHMM(t1); }
-
-function safe(value, defaultValue) {
-  return value === null || value === undefined ? (defaultValue || '') : value;
-}
-
-function isEmpty(value) { return value === null || value === undefined || value === ''; }
 
 function isHoliday(dateStr) {
   const data = getSheet(SHEETS.HOLIDAYS.name).getDataRange().getValues();
