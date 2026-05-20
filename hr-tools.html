@@ -275,15 +275,60 @@ if (t.dataset.tab === 'leaves') loadLeaves('all');
     });
   }
 
-  async function api(action, data) {
+  // ── request queue: ป้องกัน concurrent requests ──
+  var _activeRequests = 0;
+  var MAX_CONCURRENT = 2;
+
+  async function api(action, data, btnEl, retries) {
     data = data || {};
+    retries = (retries === undefined) ? 3 : retries;
     data.action = action;
     data.lineUserId = userId;
-    const res = await fetch(APPS_SCRIPT_URL, {
-      method: 'POST', headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(data)
-    });
-    return await res.json();
+
+    // disable button ระหว่างรอ
+    if (btnEl) {
+      btnEl.disabled = true;
+      btnEl._origOpacity = btnEl.style.opacity;
+      btnEl.style.opacity = '0.5';
+    }
+
+    // ถ้า requests เต็ม queue รอก่อน
+    if (_activeRequests >= MAX_CONCURRENT) {
+      await new Promise(function(resolve) {
+        var interval = setInterval(function() {
+          if (_activeRequests < MAX_CONCURRENT) { clearInterval(interval); resolve(); }
+        }, 200);
+      });
+    }
+
+    _activeRequests++;
+    try {
+      for (var attempt = 0; attempt <= retries; attempt++) {
+        try {
+          var res = await fetch(APPS_SCRIPT_URL, {
+            method: 'POST', headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify(data)
+          });
+          var json = await res.json();
+          // retry เฉพาะ rate_limited
+          if (json.error === 'rate_limited' && attempt < retries) {
+            var delay = 600 * Math.pow(2, attempt); // 600ms, 1200ms, 2400ms
+            await new Promise(function(r) { setTimeout(r, delay); });
+            continue;
+          }
+          return json;
+        } catch (err) {
+          if (attempt === retries) return { ok: false, error: 'network_error' };
+          await new Promise(function(r) { setTimeout(r, 800); });
+        }
+      }
+    } finally {
+      _activeRequests--;
+      if (btnEl) {
+        btnEl.disabled = false;
+        btnEl.style.opacity = btnEl._origOpacity || '1';
+      }
+    }
   }
 
   // ==================== EMPLOYEES ====================
@@ -349,6 +394,7 @@ if (t.dataset.tab === 'leaves') loadLeaves('all');
   }
 
   document.getElementById('btnSaveEmp').onclick = async function() {
+    const btn = this;
     const empId = document.getElementById('empId').value;
     const updates = {
       display_name: document.getElementById('empName').value,
@@ -364,7 +410,7 @@ if (t.dataset.tab === 'leaves') loadLeaves('all');
       approver_L3_id: document.getElementById('empApprover3').value,
       is_active: document.getElementById('empActive').value === 'true'
     };
-    const r = await api('hr_update_emp', { employeeId: empId, updates: updates });
+    const r = await api('hr_update_emp', { employeeId: empId, updates: updates }, btn);
     if (r.ok) {
       alert('บันทึกสำเร็จ');
       document.getElementById('empModal').classList.remove('show');
@@ -375,6 +421,7 @@ if (t.dataset.tab === 'leaves') loadLeaves('all');
   };
 
   document.getElementById('btnDeactivateEmp').onclick = async function() {
+    const btn = this;
     const empId = document.getElementById('empId').value;
     const empName = document.getElementById('empName').value;
     const reason = prompt(
@@ -382,7 +429,7 @@ if (t.dataset.tab === 'leaves') loadLeaves('all');
       'ลาออก'
     );
     if (reason === null) return; // กด Cancel
-    const r = await api('hr_deactivate_emp', { employeeId: empId, reason: reason || 'ลาออก' });
+    const r = await api('hr_deactivate_emp', { employeeId: empId, reason: reason || 'ลาออก' }, btn);
     if (r.ok) {
       var msg = '✅ ปิดใช้งาน ' + empName + ' เรียบร้อย';
       if (r.cancelledLeaves > 0) msg += '\nยกเลิกใบลาค้าง: ' + r.cancelledLeaves + ' รายการ';
@@ -396,10 +443,11 @@ if (t.dataset.tab === 'leaves') loadLeaves('all');
   };
 
   document.getElementById('btnReactivateEmp').onclick = async function() {
+    const btn = this;
     const empId = document.getElementById('empId').value;
     const empName = document.getElementById('empName').value;
     if (!confirm('เปิดใช้งาน ' + empName + ' อีกครั้ง?')) return;
-    const r = await api('hr_reactivate_emp', { employeeId: empId });
+    const r = await api('hr_reactivate_emp', { employeeId: empId }, btn);
     if (r.ok) {
       alert('✅ เปิดใช้งาน ' + empName + ' เรียบร้อย');
       document.getElementById('empModal').classList.remove('show');
@@ -514,6 +562,7 @@ if (t.dataset.tab === 'leaves') loadLeaves('all');
   }
 
   document.getElementById('btnAddPayItem').onclick = async function() {
+    const btn = this;
     const empId = prompt('Employee ID (เว้นว่าง = ทุกคน):');
     const type = prompt('ประเภท (bonus/deduction):');
     const amount = prompt('จำนวน (บาท):');
@@ -528,15 +577,16 @@ if (t.dataset.tab === 'leaves') loadLeaves('all');
         amount: Number(amount),
         reason: reason
       }
-    });
+    }, btn);
     if (r.ok) { alert('เพิ่มแล้ว'); loadPayItems(); }
     else alert('Error');
   };
 
   // ==================== REPORT ====================
   document.getElementById('btnGenReport').onclick = async function() {
+    const btn = this;
     const period = document.getElementById('reportPeriod').value;
-    const r = await api('hr_report', { period: period });
+    const r = await api('hr_report', { period: period }, btn);
     const el = document.getElementById('reportList');
     el.className = '';
     if (!r.ok) { el.textContent = 'Error'; return; }
@@ -553,15 +603,16 @@ if (t.dataset.tab === 'leaves') loadLeaves('all');
   };
 
   document.getElementById('btnClosePeriod').onclick = async function() {
+    const btn = this;
     const period = document.getElementById('reportPeriod').value;
     if (!period) { alert('กรุณาเลือกงวดก่อน'); return; }
     if (!confirm('ยืนยันการปิดงวด ' + period + ' ?\n\nระบบจะคำนวณยอดรวม:\n• ค่าจ้าง (ตามประเภทพนักงาน)\n• ค่าอาหาร + ค่าเดินทาง\n• หักลาเกินสิทธิ์ / ขาดงาน\n• เบี้ยขยัน / ค่าครองชีพ (จาก PayItems)')) return;
-    const r = await api('close_period', { period: period });
+    const r = await api('close_period', { period: period }, btn);
     if (r.ok) {
       renderCloseResult(r, period);
     } else if (r.error === 'has_pending') {
       if (confirm('⚠️ มีคำขอค้างอยู่:\n  ลา ' + r.pendingLeaves + ' รายการ\n  OT ' + r.pendingOT + ' รายการ\n\nต้องการปิดงวดโดยข้ามคำขอที่ค้างอยู่?')) {
-        const r2 = await api('close_period', { period: period, force: true });
+        const r2 = await api('close_period', { period: period, force: true }, btn);
         if (r2.ok) renderCloseResult(r2, period);
         else alert('Error: ' + r2.error);
       }

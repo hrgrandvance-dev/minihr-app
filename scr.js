@@ -17,7 +17,7 @@ function doPost(e) {
     const userId = body.lineUserId || clientIp;
     if (isRateLimited(userId)) {
       logWarn('doPost', 'rate_limited', { userId, action: body.action }, userId);
-      return jsonOutput({ ok: false, error: 'too_many_requests', message: 'ลองใหม่ในไม่กี่วินาทีต่อมา' });
+      return jsonOutput({ ok: false, error: 'rate_limited', message: 'ลองใหม่ในไม่กี่วินาทีต่อมา' });
     }
 
     if (body.events && Array.isArray(body.events)) {
@@ -87,7 +87,7 @@ function isRateLimited(userId) {
   const cache = CacheService.getScriptCache();
   const key = 'rate_' + userId;
   const count = parseInt(cache.get(key) || '0', 10);
-  if (count >= 10) return true;
+  if (count >= 30) return true;          // ขยายจาก 10 → 30 req/60s
   cache.put(key, String(count + 1), 60);
   return false;
 }
