@@ -186,6 +186,15 @@
     <div id="reportList" class="empty-state">เลือกงวดและกดสร้างรายงาน<div style="font-size:9px;opacity:0.7;margin-top:3px;">Select Period & Generate</div></div>
   </div>
 
+  <div class="panel" id="panel-leaves">
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+      <button class="btn" onclick="loadLeaves('all')" id="filterAll" style="flex:1;font-size:12px;">ทั้งหมด</button>
+      <button class="btn btn-secondary" onclick="loadLeaves('pending')" id="filterPending" style="flex:1;font-size:12px;">รอดำเนินการ</button>
+      <button class="btn btn-secondary" onclick="loadLeaves('approved')" id="filterApproved" style="flex:1;font-size:12px;">อนุมัติแล้ว</button>
+    </div>
+    <div id="leaveList" class="loading-state">เลือกตัวกรองเพื่อโหลดรายการ</div>
+  </div>
+
 </div>
 
 <!-- Edit Employee Modal -->
@@ -227,14 +236,6 @@
         <span class="btn-text">✅ เปิดใช้งานอีกครั้ง</span><span class="btn-en"> / Reactivate</span>
       </button>
     </div>
-  </div>
-  <div class="panel" id="panel-leaves">
-    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
-      <button class="btn" onclick="loadLeaves('all')" id="filterAll" style="flex:1;font-size:12px;">ทั้งหมด</button>
-      <button class="btn btn-secondary" onclick="loadLeaves('pending')" id="filterPending" style="flex:1;font-size:12px;">รอดำเนินการ</button>
-      <button class="btn btn-secondary" onclick="loadLeaves('approved')" id="filterApproved" style="flex:1;font-size:12px;">อนุมัติแล้ว</button>
-    </div>
-    <div id="leaveList" class="loading-state">เลือกตัวกรองเพื่อโหลดรายการ</div>
   </div>
 </div>
 
