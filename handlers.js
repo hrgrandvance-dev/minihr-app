@@ -1420,44 +1420,11 @@ function autoDetectSlot() {
  * Validate slot timing
  * คืน null = ผ่าน, string = error code
  *
- * Window แต่ละ slot (±30 นาที จาก boundary):
- *   IN         → [work_start - 30 min]  ถึง [lunch_start]
- *                รองรับทั้งมาปกติ, มาสาย, และมาเข้างานครึ่งบ่าย (ก่อนเที่ยง)
- *   LUNCH_OUT  → [lunch_start - 30 min] ถึง [lunch_end + 30 min]
- *   LUNCH_IN   → [lunch_start]          ถึง [lunch_end + 30 min]
- *   OUT        → [lunch_end]            ถึง เที่ยงคืน
- *                รองรับทั้งเลิกปกติ, เลิกเร็ว (ลาครึ่งวันบ่าย), และ OT
+ * ไม่จำกัดช่วงเวลา — เช็คอิน/เช็คเอาท์ได้ตลอด 24 ชั่วโมง
+ * (รองรับกะกลางคืน, OT ดึก, และตารางงานยืดหยุ่น)
  */
 function validateSlotTiming(slot, config) {
-  const now        = minutesNow();
-  const workStart  = parseHHMM(config.work_start);   // เช่น 08:00 = 480
-  const lunchStart = parseHHMM(config.lunch_start);  // เช่น 12:00 = 720
-  const lunchEnd   = parseHHMM(config.lunch_end);    // เช่น 13:00 = 780
-  const BUFFER     = 30; // นาที
-
-  if (slot === 'IN') {
-    // เช็คอิน IN ได้ตั้งแต่ 30 นาทีก่อนงานเริ่ม จนถึงก่อนเที่ยง
-    // (รองรับคนที่เริ่มงานบ่าย หรือลาครึ่งวันเช้า — ไม่ต้องเช็ค IN ตอนเช้า)
-    if (now < workStart - BUFFER) return 'too_early_for_in';
-    if (now >= lunchStart)        return 'too_late_for_in';
-  }
-
-  if (slot === 'LUNCH_OUT') {
-    if (now < lunchStart - BUFFER) return 'too_early_for_lunch_out';
-    if (now > lunchEnd   + BUFFER) return 'too_late_for_lunch_out';
-  }
-
-  if (slot === 'LUNCH_IN') {
-    if (now < lunchStart)          return 'too_early_for_lunch_in';
-    if (now > lunchEnd   + BUFFER) return 'too_late_for_lunch_in';
-  }
-
-  if (slot === 'OUT') {
-    // เลิกงานได้ตั้งแต่หลังพักเที่ยง (รองรับลาครึ่งวันบ่าย) จนถึงเที่ยงคืน
-    if (now < lunchEnd) return 'too_early_for_out';
-    // ไม่จำกัดเวลาสูงสุด — รองรับ OT ถึงดึก
-  }
-
+  // No time restrictions — allow check-in/out at any time of day
   return null;
 }
 
