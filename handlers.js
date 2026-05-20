@@ -491,6 +491,9 @@ function getBalance(payload) {
   let leaveDeduction = 0;
   let absentDeduction = 0;
 
+  // ดึง quota ครั้งเดียว ใช้ทั้งในการคำนวณหักเงินและแสดง leaveBalance
+  const quota = getLeaveQuota(emp.employee_id, year) || {};
+
   if (payType === 'daily') {
     // รายวัน: จ่ายตามวันที่มาจริง
     dailyRate = Number(emp.daily_rate || 0);
@@ -503,7 +506,6 @@ function getBalance(payload) {
       : basePay / 22;
 
     // หักลาเกินโควต้า (ทั้ง sick + personal — vacation ปกติไม่หัก)
-    const quota = getLeaveQuota(emp.employee_id, year) || {};
     const sickOver  = Math.max(0, Number(quota.sick_used     || 0) - Number(quota.sick_quota     || 0));
     const persOver  = Math.max(0, Number(quota.personal_used || 0) - Number(quota.personal_quota || 0));
     leaveDeduction  = Math.round((sickOver + persOver) * dailyRate);
@@ -543,22 +545,21 @@ function getBalance(payload) {
   );
 
   // === Leave quota remaining ===
-  const quota2 = getLeaveQuota(emp.employee_id, year) || {};
   const leaveBalance = {
     sick: {
-      quota:     Number(quota2.sick_quota     || 0),
-      used:      Number(quota2.sick_used      || 0),
-      remaining: Number(quota2.sick_quota     || 0) - Number(quota2.sick_used     || 0)
+      quota:     Number(quota.sick_quota     || 0),
+      used:      Number(quota.sick_used      || 0),
+      remaining: Number(quota.sick_quota     || 0) - Number(quota.sick_used     || 0)
     },
     personal: {
-      quota:     Number(quota2.personal_quota || 0),
-      used:      Number(quota2.personal_used  || 0),
-      remaining: Number(quota2.personal_quota || 0) - Number(quota2.personal_used || 0)
+      quota:     Number(quota.personal_quota || 0),
+      used:      Number(quota.personal_used  || 0),
+      remaining: Number(quota.personal_quota || 0) - Number(quota.personal_used || 0)
     },
     vacation: {
-      quota:     Number(quota2.vacation_quota || 0),
-      used:      Number(quota2.vacation_used  || 0),
-      remaining: Number(quota2.vacation_quota || 0) - Number(quota2.vacation_used || 0)
+      quota:     Number(quota.vacation_quota || 0),
+      used:      Number(quota.vacation_used  || 0),
+      remaining: Number(quota.vacation_quota || 0) - Number(quota.vacation_used || 0)
     }
   };
 
@@ -1030,12 +1031,14 @@ function closePeriod(payload) {
   if (!isOwner(payload.lineUserId)) return { ok: false, error: 'forbidden' };
   const period = payload.period || currentPeriod();
 
-  // === ตรวจ pending ===
+  // === ตรวจ pending เฉพาะในงวดที่กำลังปิด ===
   const pendingLeaves = filterRows(SHEETS.LEAVES.name, function(r) {
-    return String(r.status).indexOf('pending') === 0;
+    return String(r.status).indexOf('pending') === 0
+      && (String(r.start_date).indexOf(period) === 0 || String(r.end_date).indexOf(period) === 0);
   });
   const pendingOT = filterRows(SHEETS.OT.name, function(r) {
-    return String(r.status).indexOf('pending') === 0;
+    return String(r.status).indexOf('pending') === 0
+      && String(r.ot_date).indexOf(period) === 0;
   });
 
   if ((pendingLeaves.length > 0 || pendingOT.length > 0) && !payload.force) {

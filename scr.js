@@ -358,7 +358,8 @@ function uploadImage(base64, filename, subfolder) {
     Utilities.base64Decode(cleanBase64), 'image/jpeg', filename
   );
   const file = targetFolder.createFile(blob);
-  // file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  // ต้องตั้ง public sharing เพื่อให้ LINE Flex card แสดงรูปได้
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
   return 'https://drive.google.com/uc?id=' + file.getId();
 }
 
@@ -663,6 +664,9 @@ function parsePostbackData(data) {
  * ============================================================
  */
 
+// ใน GAS แต่ละ execution เป็น process ใหม่ — _sheetCache จึงไม่ช่วยข้ามการเรียก
+// แต่ยังคงประโยชน์สำหรับ reuse ใน execution เดียวกัน (เช่น หลาย handler ใน doPost เดียว)
+// สิ่งสำคัญ: SpreadsheetApp.openById() ใน GAS มี internal cache อยู่แล้ว
 const _sheetCache = {};
 function getSheet(name) {
   if (_sheetCache[name]) return _sheetCache[name];
@@ -878,10 +882,16 @@ function haversineMeters(lat1, lng1, lat2, lng2) {
 }
 
 function nextEmployeeId() {
-  const sheet = getSheet(SHEETS.EMPLOYEES.name);
-  const rows = sheet.getLastRow() > 1 ? sheet.getLastRow() - 1 : 0;
-  const nextNum = rows + 4;
-  return 'TH' + padLeft(nextNum, 5);
+  const data = getSheet(SHEETS.EMPLOYEES.name).getDataRange().getValues();
+  let maxNum = 0;
+  for (let i = 1; i < data.length; i++) {
+    const id = String(data[i][0] || '');
+    if (id.indexOf('TH') === 0) {
+      const num = parseInt(id.slice(2), 10);
+      if (!isNaN(num) && num > maxNum) maxNum = num;
+    }
+  }
+  return 'TH' + padLeft(maxNum + 1, 5);
 }
 
 function nextCheckinId(dateStr) {
